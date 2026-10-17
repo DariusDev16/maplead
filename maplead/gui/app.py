@@ -118,8 +118,30 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     _apply_cli_prefill(window, args)
 
     if args.selftest:
-        return selftest(window)
+        code = selftest(window)
+        _report_selftest_to_user(code)
+        return code
     return app.exec()
+
+
+def _report_selftest_to_user(code: int) -> None:
+    """A windowed Windows build has no terminal, so say it with a dialog."""
+    if os.environ.get("MAPLEAD_WINDOWED", "") in ("", "0", "false", "no"):
+        return
+    log = os.environ.get("MAPLEAD_SELFTEST_LOG", "")
+    try:
+        from PySide6.QtWidgets import QMessageBox
+        box = QMessageBox()
+        box.setWindowTitle("MAPLEAD self-test")
+        box.setIcon(QMessageBox.Information if code == 0 else QMessageBox.Critical)
+        box.setText("Self-test passed." if code == 0 else "Self-test FAILED.")
+        detail = "See the log for the full report."
+        if log and os.path.exists(log):
+            detail = f"Log: {log}"
+        box.setInformativeText(detail)
+        box.exec()
+    except Exception:                      # headless runner: never fail on the report
+        pass
 
 
 def _apply_cli_prefill(window, args) -> None:

@@ -1,11 +1,14 @@
 """
 Where MAPLEAD keeps its configuration, API keys and exports.
 
-XDG-aware so the GUI works from a read-only AppImage bundle:
+XDG-aware on Linux/macOS, native folders on Windows:
 
-    config  $XDG_CONFIG_HOME/maplead/.env      (keys, window geometry)
-    data    $XDG_DATA_HOME/maplead/            (state, history)
-    exports ~/Documents/maplead/               (lead files)
+    Linux    $XDG_CONFIG_HOME/maplead/.env      (keys, window geometry)
+             $XDG_DATA_HOME/maplead/            (state, history)
+             ~/Documents/maplead/               (lead files)
+    Windows  %APPDATA%\\maplead\\.env           (keys)
+             %LOCALAPPDATA%\\maplead\\          (state)
+             %USERPROFILE%\\Documents\\maplead\\ (lead files)
 
 The CLI keeps preferring a legacy `.env` that sits next to the tool, so old
 installs behave exactly as before; the GUI always uses the config dir.
@@ -15,11 +18,28 @@ from __future__ import annotations
 
 import os
 import re
+import sys
 from typing import Dict, List, Optional
 
 APP_ID = "maplead"
 APP_TITLE = "MAPLEAD"
 PACKAGE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+IS_WINDOWS = sys.platform.startswith("win")
+
+
+def _app_data(env_var: str) -> str:
+    base = os.environ.get(env_var, "").strip()
+    if base and os.path.isabs(base):
+        return base
+    return os.path.join(os.path.expanduser("~"), "AppData", "Roaming")
+
+
+def _local_app_data(env_var: str) -> str:
+    base = os.environ.get(env_var, "").strip()
+    if base and os.path.isabs(base):
+        return base
+    return os.path.join(os.path.expanduser("~"), "AppData", "Local")
 
 
 # --------------------------------------------------------------------------- #
@@ -34,10 +54,14 @@ def _base_dir(env_var: str, fallback: str) -> str:
 
 
 def config_dir() -> str:
+    if IS_WINDOWS:
+        return os.path.join(_app_data("APPDATA"), APP_ID)
     return os.path.join(_base_dir("XDG_CONFIG_HOME", ".config"), APP_ID)
 
 
 def data_dir() -> str:
+    if IS_WINDOWS:
+        return os.path.join(_local_app_data("LOCALAPPDATA"), APP_ID)
     return os.path.join(_base_dir("XDG_DATA_HOME", ".local/share"), APP_ID)
 
 
@@ -58,6 +82,13 @@ def _user_dirs(key: str) -> Optional[str]:
 
 
 def documents_dir() -> str:
+    if IS_WINDOWS:
+        # the Documents folder may have been relocated to OneDrive
+        for env in ("OneDrive\\Documents", "OneDrive"):
+            path = os.path.join(os.path.expanduser("~"), *env.split("\\"))
+            if os.path.isdir(path):
+                return path
+        return os.path.join(os.path.expanduser("~"), "Documents")
     return _user_dirs("XDG_DOCUMENTS_DIR") or os.path.join(os.path.expanduser("~"), "Documents")
 
 

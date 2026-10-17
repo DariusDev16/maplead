@@ -18,7 +18,7 @@ New here? Read this once, then the [README](../README.md) is just a reminder.
 
 ## 1 · Get the app
 
-Download `MAPLEAD-1.0.0-x86_64.AppImage` (Linux x86_64), then:
+### Linux (x86_64, AppImage)
 
 ```bash
 chmod +x MAPLEAD-1.0.0-x86_64.AppImage     # first time only
@@ -28,13 +28,29 @@ chmod +x MAPLEAD-1.0.0-x86_64.AppImage     # first time only
 After `./build-appimage.sh --install` you can also just type `maplead`, and the app
 appears in your application menu as **MAPLEAD**.
 
-The AppImage bundles Qt and the ~18 small X11 libraries desktops often lack. The
-only things it expects from the system are a display and the usual C library.
+### Windows (x64, zip)
 
-**No FUSE?** Older AppImages mount themselves through `libfuse.so.2`. If your system
-only ships FUSE 3 (or none at all), the `maplead` launcher notices and unpacks the
-image once into `~/.maplead-runtime/`, then runs it from there. Nothing else changes,
-and the cache refreshes itself when the AppImage is rebuilt.
+1. unzip `MAPLEAD-1.0.0-win64.zip` anywhere (Desktop is fine);
+2. double-click **`maplead.exe`**.
+
+There is no installer and nothing is written to the registry: the app runs from the
+folder it lives in, so you can also put it on a USB stick. `build-windows.ps1
+-Install` copies it to `%LOCALAPPDATA%\Programs\maplead` and adds a **MAPLEAD**
+Start-menu entry.
+
+Windows may show a blue *SmartScreen* prompt the first time (unsigned
+executables always do): **More info → Run anyway**. After the first launch Windows
+usually learns the file and stops asking. The antivirus may also flag a fresh
+unsigned `maplead.exe` for a few minutes — it is a false positive from
+PyInstaller's bootloader, not a real detection.
+
+Both builds bundle Qt and everything else they need: Python is **not** required.
+
+### If FUSE is missing on Linux
+
+Older AppImages mount themselves through `libfuse.so.2`. If your system only ships
+FUSE 3 (or none at all), the `maplead` launcher notices and unpacks the image once
+into `~/.maplead-runtime/`, then runs it from there — no root, no loop device.
 
 ## 2 · The first launch
 
@@ -140,20 +156,26 @@ Environment switches: `MAPLEAD_NO_COLOR=1`, `MAPLEAD_ASCII=1` (plain output),
 
 ## 9 · Where files live
 
-| what | path |
-|---|---|
-| keys | `~/.config/maplead/.env` (mode 600) |
-| exports | `~/Documents/maplead/` |
-| window state / theme / last form | `~/.local/share/maplead/` |
-| unpacked AppImage (no-FUSE systems) | `~/.maplead-runtime/` |
+| what | Linux | Windows |
+|---|---|---|
+| keys | `~/.config/maplead/.env` (mode 600) | `%APPDATA%\maplead\.env` |
+| exports | `~/Documents/maplead/` | `%USERPROFILE%\Documents\maplead\` |
+| window state / theme | `~/.local/share/maplead/` | `%LOCALAPPDATA%\maplead\` |
+| unpacked AppImage (no FUSE) | `~/.maplead-runtime/` | — |
 
-Nothing is written inside the project folder or the AppImage.
+Nothing is written inside the project folder or the application bundle. A legacy
+`.env` sitting next to `maplead.py` still works and takes precedence, so command-line
+installs keep reading the file they always read.
 
 ## 10 · Troubleshooting
 
 | symptom | cause / fix |
 |---|---|
-| `dlopen(): error loading libfuse.so.2` | your system has no FUSE 2 — run the `maplead` launcher (not the `.AppImage` directly), or `APPIMAGE_EXTRACT_AND_RUN=1 ./MAPLEAD-….AppImage` |
+| `dlopen(): error loading libfuse.so.2` | your Linux has no FUSE 2 — run the `maplead` launcher (not the `.AppImage` directly), or `APPIMAGE_EXTRACT_AND_RUN=1 ./MAPLEAD-….AppImage` |
+| Windows: "Windows protected your PC" | SmartScreen on an unsigned build → **More info → Run anyway** |
+| Windows: the exe is quarantined by Defender | false positive from PyInstaller's bootloader; allow/restore it, or build it yourself with `build-windows.ps1` |
+| Windows: the app opens as a black console | you ran `maplead.exe --selftest`; that is the self-check, close it |
+| `maplead.exe --selftest` shows a dialog | expected in a windowed build: the report is written to `%TEMP%\maplead-selftest.log` |
 | blank window / wrong colours | force a theme: `maplead --theme dark` or `--theme light` |
 | "no API keys — demo mode available" | expected until you add one in **API keys…** |
 | `API key not valid` | the key is wrong for that API — paste the right one (Google's key must have **Places API (New)** enabled and billing on the project) |
@@ -161,8 +183,8 @@ Nothing is written inside the project folder or the AppImage.
 | `429` | rate limited: wait a minute and run again |
 | "got 60 of the 150 you asked for" | Google caps a text query at 60 results; ask for a bigger limit (more query variants run) or a wider city/region |
 | nothing matched | relax the filters first: drop `--min-rating`, un-tick "only with phone", then try another city spelling |
-| window opens bigger than the screen | it self-corrects now; if it persists, delete `~/.local/share/maplead/` and restart |
-| nothing happens on double-click | your file manager may not allow executing it — run it from a terminal once, or use the menu entry |
+| window opens bigger than the screen | it self-corrects now; if it persists, delete the state dir (`~/.local/share/maplead` / `%LOCALAPPDATA%\maplead`) and restart |
+| nothing happens on double-click (Linux) | your file manager may not allow executing it — run it from a terminal once, or use the menu entry |
 
 Still stuck? Open an issue with the output of `maplead --selftest` and
 `maplead --check-keys`.

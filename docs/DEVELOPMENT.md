@@ -92,7 +92,44 @@ python3 -m venv .venv-gui && .venv-gui/bin/python -m pip install PySide6-Essenti
 On Debian, `python3 -m venv` sometimes ships without `ensurepip`; bootstrap pip with
 `get-pip.py` (the build script does this for you).
 
-## Building the AppImage
+## Building the Windows executable
+
+PyInstaller **cannot cross-compile** — it has to run on the target OS. The Windows
+build therefore needs Windows: a developer machine, or the `windows-2022` runner in
+`.github/workflows/build-windows.yml` (which also runs on every push so you can grab
+the artifact without building locally).
+
+```powershell
+git clone https://github.com/DariusDev16/maplead.git
+cd maplead
+
+powershell -ExecutionPolicy Bypass -File .\build-windows.ps1            # build + test
+powershell -ExecutionPolicy Bypass -File .\build-windows.ps1 -Install    # …and install
+powershell -ExecutionPolicy Bypass -File .\build-windows.ps1 -NoTest    # skip the test
+```
+
+Output:
+
+```
+dist\maplead\maplead.exe + _internal\      the application (onedir)
+release\MAPLEAD-<version>-win64.zip         what users download
+```
+
+Decisions worth knowing:
+
+- **onedir, not onefile.** A 160 MB onefile executable has to unpack itself on every
+  start (slow) and trips Windows Defender often. A zipped folder starts instantly and
+  gets quiet after the first run.
+- **`console=False`.** The app opens as a normal window. `--selftest` therefore has no
+  terminal: `packaging/gui_entry.py` attaches stdout to
+  `%TEMP%\maplead-selftest.log` and the app shows a dialog with the verdict. Exit code
+  is still meaningful, which is what CI checks.
+- **`.ico` instead of `.png`.** PyInstaller wants an icon file on Windows;
+  `packaging/render_icon.py` writes a multi-resolution `maplead.ico` straight from the
+  SVG, so the build needs no Pillow. The spec picks whichever the platform wants.
+- **No installer, no registry.** It runs from wherever it is unzipped; `-Install` only
+  copies it to `%LOCALAPPDATA%\Programs` and writes a Start-menu shortcut.
+- Both platforms share one spec (`packaging/maplead.spec`) and one entry point.
 
 ```bash
 ./build-appimage.sh                 # build + smoke test

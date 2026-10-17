@@ -10,7 +10,7 @@ lead-scraper API and writes them to CSV / Excel / JSON / TXT / TSV / HTML.
 
 | | |
 |---|---|
-| 🖥️ **Desktop app** | Qt6 window, one file, nothing to install — [`MAPLEAD-x86_64.AppImage`](docs/GUIDE.md#1-get-the-app) |
+| 🖥️ **Desktop app** | Qt6 window, no installer, no root — Linux AppImage, Windows zip |
 | ⌨️ **Terminal wizard** | pure standard-library Python, no dependencies at all |
 | 🔌 **4 providers** | Outscraper · Google Places · SerpApi · DataForSEO (+ an offline demo) |
 | 🧭 **65 countries / 1044 cities** | typed, filtered, auto-completed — no spelling games |
@@ -26,23 +26,35 @@ lead-scraper API and writes them to CSV / Excel / JSON / TXT / TSV / HTML.
 
 ## 1 · Get the app
 
-**Linux x86_64, AppImage** — one file, no packages, no root:
+**Linux x86_64 — AppImage:** one file, no packages, no root.
 
 ```bash
 chmod +x MAPLEAD-1.0.0-x86_64.AppImage
 ./MAPLEAD-1.0.0-x86_64.AppImage
 ```
 
-Building it yourself (also fine for arm64/other distros with a rebuild):
+**Windows x64 — zip:** same application, same engine.
+
+```
+1) unzip MAPLEAD-1.0.0-win64.zip
+2) double-click maplead.exe
+```
+
+No installer, no registry, no admin rights: it runs from the folder you unzip it
+into. `--install` (see below) copies it to `%LOCALAPPDATA%\Programs\maplead` and
+adds a **MAPLEAD** entry to the Start menu.
+
+Building either yourself:
 
 ```bash
 git clone https://github.com/DariusDev16/maplead.git
 cd maplead
-./build-appimage.sh --install     # writes ~/Apps/, adds it to your PATH and menu
+./build-appimage.sh --install                              # Linux
+powershell -ExecutionPolicy Bypass -File .\build-windows.ps1 -Install   # Windows
 ```
 
-> No FUSE on your system? The launcher handles it: it unpacks the image once into
-> `~/.maplead-runtime/` and runs from there. No root, no loop device.
+> No FUSE on your Linux system? The launcher handles it: it unpacks the image
+> once into `~/.maplead-runtime/` and runs from there. No root, no loop device.
 
 ## 2 · Add an API key
 
@@ -127,8 +139,9 @@ More detail in **[docs/GUIDE.md](docs/GUIDE.md)** (user guide) and
 
 ## Status
 
-Linux is the only supported platform for now (AppImage). The terminal wizard runs
-anywhere Python 3.9+ does. macOS/Windows packaging is on the roadmap.
+Packaged for **Linux x86_64** (AppImage) and **Windows x64** (zip). Both carry the
+same GUI and the same engine; the terminal wizard runs anywhere Python 3.9+ does,
+including macOS. macOS packaging is on the roadmap.
 
 ## Legal
 

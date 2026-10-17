@@ -11,6 +11,10 @@ on:
       tag:
         description: "tag to build (e.g. v1.0.0)"
         required: true
+      windows:
+        description: "also build the Windows exe"
+        type: boolean
+        default: true
 
 permissions:
   contents: write
@@ -70,3 +74,28 @@ jobs:
             and runs from there. The user guide covers the rest:
             https://github.com/${{ github.repository }}/blob/main/docs/GUIDE.md
           files: ${{ steps.meta.outputs.path }}
+
+  windows:
+    name: build exe (windows x64)
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: build + self-test
+        shell: pwsh
+        run: .\build-windows.ps1
+
+      - name: attach the zip to the same release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.event.inputs.tag || github.ref_name }}
+          body: |
+            Windows x64 build of MAPLEAD: unzip it anywhere and run `maplead.exe`.
+
+            Keys live in `%APPDATA%\maplead\.env`, exports in
+            `%USERPROFILE%\Documents\maplead\`.
+          files: release/*.zip

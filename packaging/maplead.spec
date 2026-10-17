@@ -12,6 +12,11 @@ from pathlib import Path
 
 ROOT = Path(SPECPATH).resolve().parent          # noqa: F821 - injected by PyInstaller
 
+# Windows takes an .ico, Linux/macOS ignore the icon argument entirely
+import sys as _sys                                            # noqa: E402
+_ICON = ROOT / "packaging" / ("maplead.ico" if _sys.platform.startswith("win")
+                              else "maplead.png")
+
 # Qt modules we never touch - dropping them roughly halves the bundle
 EXCLUDES = [
     "PySide6.QtQml", "PySide6.QtQuick", "PySide6.QtQuickWidgets", "PySide6.QtQuick3D",
@@ -70,7 +75,7 @@ exe = EXE(                                             # noqa: F821
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon=str(ROOT / "packaging" / "maplead.png"),
+    icon=str(_ICON),
 )
 
 coll = COLLECT(                                       # noqa: F821

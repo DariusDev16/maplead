@@ -2,6 +2,20 @@
 
 All notable changes to MAPLEAD. Format follows [Keep a Changelog](https://keepachangelog.com/).
 
+## [Unreleased]
+
+### Added
+- **Windows x64 build** — same GUI, same engine, shipped as a zip:
+  `maplead.exe` runs from any folder, no installer and no admin rights.
+  `build-windows.ps1 [-Install]` builds it and self-tests the result.
+- Native Windows paths: keys in `%APPDATA%\maplead\.env`, state in
+  `%LOCALAPPDATA%\maplead\`, exports in `%USERPROFILE%\Documents\maplead\`.
+- Multi-resolution `packaging/maplead.ico` rendered from the SVG (no Pillow needed).
+- `--selftest` in a windowed Windows build: the report goes to
+  `%TEMP%\maplead-selftest.log` and a dialog shows the verdict.
+- `windows-2022` job in the release workflow; both artefacts are attached to the
+  same tag.
+
 ## [1.0.0] — 2026-10-17
 
 ### Added
