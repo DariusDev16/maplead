@@ -89,23 +89,29 @@ $sizeMb = [math]::Round((Get-Item $zip).Length / 1MB, 1)
 Write-Host "    $zip  ($sizeMb MB)"
 
 Say "5/7  quick checks"
-& $exe --version
-if ($LASTEXITCODE -ne 0) { throw "the built executable does not run" }
+$version = Start-Process -FilePath $exe -ArgumentList "--version" `
+    -Wait -PassThru -NoNewWindow
+if ($version.ExitCode -ne 0) { throw "the built executable does not run" }
 
 Say "6/7  self-test"
 if ($NoTest) {
     Write-Host "    skipped (--NoTest)"
 } else {
-    # a windowed exe has no console: it writes %TEMP%\maplead-selftest.log
+    # a windowed exe has no console: it writes %TEMP%\maplead-selftest.log.
+    # Start-Process -Wait is required because PowerShell does not block on
+    # GUI-subsystem executables, so $LASTEXITCODE would be unreliable.
     $env:QT_QPA_PLATFORM = "offscreen"
-    & $exe --selftest
-    $code = $LASTEXITCODE
+    $process = Start-Process -FilePath $exe -ArgumentList "--selftest" `
+        -Wait -PassThru -NoNewWindow
     Remove-Item Env:\QT_QPA_PLATFORM
+    $code = $process.ExitCode
+
     $log = Join-Path $env:TEMP "maplead-selftest.log"
     if (Test-Path $log) {
-        Get-Content $log -Tail 8 | ForEach-Object { Write-Host "    $_" }
+        Get-Content $log -Tail 10 | ForEach-Object { Write-Host "    $_" }
     }
-    if ($code -ne 0) { throw "self-test failed (exit $code)" }
+    if ($code -ne 0) { throw "self-test failed (exit code $code)" }
+    Write-Host "    self-test passed (exit code 0)"
 }
 
 Say "7/7  install"

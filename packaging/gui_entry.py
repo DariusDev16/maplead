@@ -2,8 +2,8 @@
 Frozen entry point for the PyInstaller build (Linux AppImage and Windows exe).
 
 Kept separate from the launchers so the frozen binary has one obvious main, and
-so a windowed Windows build - which has no stdout at all - can still print its
-self-test report to a file and pop a dialog with the verdict.
+so a windowed Windows build - which has no usable stdout - can still print its
+self-test report and pop a dialog with the verdict.
 """
 
 import multiprocessing
@@ -12,16 +12,35 @@ import sys
 import tempfile
 
 
-def _attach_a_console_or_a_file() -> None:
-    """Windows/py2exe windowed builds have sys.stdout == None.
+def _reconfigure(stream) -> bool:
+    """Force UTF-8 with a lenient fallback so a stray '→' cannot kill a run.
 
-    Redirect it to a log file so `--selftest` (and anything that prints) still
-    works, and tell the app that it has to report back through a message box.
+    A windowed build launched from a console inherits a cp1252 stream on
+    Windows, where '→' or '★' raise UnicodeEncodeError.
     """
-    if sys.stdout is not None and sys.stderr is not None:
+    if stream is None:
+        return False
+    try:
+        stream.reconfigure(encoding="utf-8", errors="backslashreplace")
+        return True
+    except (AttributeError, ValueError, OSError):
+        return False
+
+
+def prepare_streams() -> None:
+    """Guarantee that print() works, or fall back to a log file."""
+    stdout_ok = _reconfigure(sys.stdout)
+    stderr_ok = _reconfigure(sys.stderr)
+
+    if stdout_ok and stderr_ok:
         return
+
     target = os.path.join(tempfile.gettempdir(), "maplead-selftest.log")
-    handle = open(target, "w", encoding="utf-8", buffering=1)
+    try:
+        handle = open(target, "w", encoding="utf-8", errors="backslashreplace",
+                      buffering=1)
+    except OSError:
+        return
     sys.stdout = handle
     sys.stderr = handle
     os.environ["MAPLEAD_WINDOWED"] = "1"
@@ -33,7 +52,7 @@ def _entry() -> int:
         multiprocessing.freeze_support()      # harmless, but keeps Qt threads happy
     os.environ.setdefault("QT_ENABLE_HIGHDPI_SCALING", "1")
     if "--selftest" in sys.argv:
-        _attach_a_console_or_a_file()
+        prepare_streams()
     from maplead.gui.app import main
     return main()
 
