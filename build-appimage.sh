@@ -22,6 +22,9 @@ APPDIR="$BUILD/maplead.AppDir"
 # The AppImage is a *product*, not source: it is written OUTSIDE the project so
 # `git clean`, `rm -rf` or a stray cleanup never eat it.
 OUTDIR="${MAPLEAD_OUTDIR:-$HOME/Apps}"
+# where --install puts the launcher and the menu entry (also used in the summary)
+bin="${XDG_BIN_HOME:-$HOME/.local/bin}"
+apps="${XDG_DATA_HOME:-$HOME/.local/share}"
 NAME="MAPLEAD"
 BIN_NAME="maplead"
 ICON_NAME="maplead"
@@ -213,8 +216,6 @@ say "done"
 
 if [[ "$DO_INSTALL" == "1" ]]; then
   # --- launcher + PATH + application menu -------------------------------- #
-  bin="${XDG_BIN_HOME:-$HOME/.local/bin}"
-  apps="${XDG_DATA_HOME:-$HOME/.local/share}"
   mkdir -p "$bin" "$apps/applications" \
            "$apps/icons/hicolor/512x512/apps" "$apps/icons/hicolor/256x256/apps"
 
