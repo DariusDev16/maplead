@@ -1,0 +1,54 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  terminal:
+    name: terminal wizard (no dependencies)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.9"
+
+      - name: compile every module
+        run: python -m compileall -q maplead
+
+      - name: the CLI must run with nothing installed
+        run: |
+          python -m pip list --format=freeze | grep -qi pyside && { echo "PySide6 leaked into the CLI path"; exit 1; } || true
+          python maplead.py --version
+          python maplead.py --demo --country Germany --city Berlin \
+            --business dentist --fields rec --limit 60 --format xlsx \
+            --min-rating 4.0 --outdir /tmp/maplead-ci
+          ls -l /tmp/maplead-ci
+
+      - name: introspection still works
+        run: |
+          python maplead.py --list-providers
+          python maplead.py --list-fields --provider google
+
+  desktop:
+    name: desktop app
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: install GUI dependencies
+        run: python -m pip install -q "PySide6-Essentials>=6.8" pyflakes
+
+      - name: lint (unused imports / undefined names)
+        run: python -m pyflakes maplead tools
+
+      - name: headless self-test
+        env:
+          QT_QPA_PLATFORM: offscreen
+        run: python maplead-gui.py --selftest

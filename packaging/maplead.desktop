@@ -1,0 +1,15 @@
+[Desktop Entry]
+Type=Application
+Version=1.5
+Name=MAPLEAD
+GenericName=Google Maps Lead Extractor
+Comment=Find local business leads on Google Maps and export them to CSV, Excel, JSON...
+Exec=maplead %U
+TryExec=maplead
+Icon=maplead
+Terminal=false
+Categories=Network;Utility;Development;
+Keywords=leads;google maps;scraper;business;prospects;outscraper;csv;excel;
+StartupNotify=true
+StartupWMClass=maplead
+MimeType=application/json;text/csv;

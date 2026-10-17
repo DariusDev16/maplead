@@ -1,0 +1,24 @@
+# secrets - never commit these
+.env
+.env.*
+!.env.example
+
+# build / runtime artefacts
+build/
+dist/
+.venv-gui/
+__pycache__/
+*.pyc
+*.pyo
+
+# lead exports
+leads/*.csv
+leads/*.xlsx
+leads/*.json
+leads/*.html
+leads/*.txt
+leads/*.tsv
+
+# generated icons (rebuilt by packaging/render_icon.py)
+packaging/maplead-*.png
+packaging/maplead.png
