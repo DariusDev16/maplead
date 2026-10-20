@@ -7,7 +7,8 @@ from __future__ import annotations
 
 import os
 import shutil
-import sys
+
+from . import host
 
 VERSION = "1.0.0"
 
@@ -20,15 +21,25 @@ FORCE_PLAIN = os.environ.get("MAPLEAD_ASCII", "") not in ("", "0", "false", "no"
 # lets you keep the colours when piping:  ./maplead.py | less -R
 _FORCE_COLOR = os.environ.get("MAPLEAD_FORCE_COLOR", "") not in ("", "0", "false", "no")
 
+# Windows: switch the console to UTF-8 + VT sequences before anything is printed
+ANSI_OK = host.enable_console()
+CAN_UNICODE = host.console_unicode()
+
 
 def _tty_ok() -> bool:
     if _FORCE:
         return False
-    return sys.stdout.isatty() and os.environ.get("TERM", "") not in ("dumb", "")
+    if not host.stdout_is_tty():
+        return False
+    # an unset TERM is normal on Windows; only an explicitly dumb terminal opts out
+    return os.environ.get("TERM", "").strip().lower() != "dumb"
 
 
-COLOR = (_tty_ok() or _FORCE_COLOR) and not FORCE_PLAIN
+COLOR = ((_tty_ok() and ANSI_OK) or _FORCE_COLOR) and not FORCE_PLAIN
 PLAIN = not COLOR or FORCE_PLAIN
+# piped output stays plain ASCII (as before); a real console gets the box art when
+# its code page can represent it
+UNICODE = (not PLAIN) and CAN_UNICODE
 
 RESET = "\x1b[0m"
 BOLD = "\x1b[1m"
@@ -93,7 +104,7 @@ def term_width(default: int = 96) -> int:
 # box-drawing pieces (unicode + pure-ascii fallback)
 # --------------------------------------------------------------------------- #
 
-if PLAIN:
+if not UNICODE:
     GLYPH = {
         "tl": "+", "tr": "+", "bl": "+", "br": "+",
         "h": "-", "v": "|", "arrow": ">", "dot": "*",
@@ -168,7 +179,7 @@ _BLOCK: dict[str, tuple[str, str, str, str, str]] = {
 
 def block_text(text: str, fill: str | None = None) -> list[str]:
     """Render `text` with the 3x5 block font -> list of 5 lines."""
-    fill = fill or ("#" if PLAIN else "█")
+    fill = fill or ("█" if UNICODE else "#")
     glyphs = [_BLOCK.get(ch.upper(), _BLOCK[" "]) for ch in text]
     lines = []
     for row in range(5):
@@ -395,22 +406,38 @@ def _strip_ansi(s: str) -> str:
     return "".join(out)
 
 
+# double-line frame used by success_block (has an ASCII twin for plain output)
+if PLAIN:
+    _FRAME = {"tl": "+", "tr": "+", "bl": "+", "br": "+", "h": "=", "v": "|"}
+else:
+    _FRAME = {"tl": "╔", "tr": "╗", "bl": "╚", "br": "╝", "h": "═", "v": "║"}
+
+
 def success_block(msg: str, detail: str = "") -> str:
-    """Big block-font DONE stamp + a one-line summary."""
-    stamp = block_text("DONE", fill=("#" if PLAIN else "█"))
-    art_w = max(len(r) for r in stamp)
-    body = [" ".join(stamp)]
-    body.append(" " + msg)
+    """5-row block-font DONE stamp + a one-line summary, framed.
+
+    Anything wider than the terminal is printed underneath the box instead of
+    inside it, so a long export path can never break the frame.
+    """
+    body = block_text("DONE", fill=("#" if PLAIN else "█"))
+    if msg:
+        body += ["", " " + msg]
     if detail:
         body.append(" " + detail)
-    width = max(art_w, max(len(b) for b in body)) + 2
-    lines = [c("╔" + "═" * (width + 2) + "╗", "green", bold=True)]
-    for row in body:
-        lines.append(c("║", "green", bold=True) + " " + row + " " * (width - len(row)) +
-                     c("║", "green", bold=True))
-    lines.append(c("╚" + "═" * (width + 2) + "╝", "green", bold=True))
-    return "\n".join([c(line, "green", bold=True) if i == 0 else line
-                      for i, line in enumerate(lines)])
+
+    limit = max(28, term_width() - 6)
+    inside = [row for row in body if len(_strip_ansi(row)) <= limit]
+    spill = [row for row in body if len(_strip_ansi(row)) > limit]
+
+    inner = max(len(_strip_ansi(row)) for row in inside)
+    out = [c(_FRAME["tl"] + _FRAME["h"] * (inner + 2) + _FRAME["tr"], "green", bold=True)]
+    for row in inside:
+        pad = " " * (inner - len(_strip_ansi(row)))
+        out.append(c(_FRAME["v"], "green", bold=True) + " " + row + pad + " " +
+                   c(_FRAME["v"], "green", bold=True))
+    out.append(c(_FRAME["bl"] + _FRAME["h"] * (inner + 2) + _FRAME["br"], "green", bold=True))
+    out.extend(spill)
+    return "\n".join(out)
 
 
 def spinner(i: int) -> str:

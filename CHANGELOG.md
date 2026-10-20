@@ -2,6 +2,33 @@
 
 All notable changes to MAPLEAD. Format follows [Keep a Changelog](https://keepachangelog.com/).
 
+## [Unreleased]
+
+### Added
+- **Windows 10/11 x64 build** — `build-windows.ps1` produces
+  `%USERPROFILE%\Apps\MAPLEAD-<version>-win64.zip`: one portable folder with
+  `MAPLEAD.exe` (windowed Qt app), `maplead-cli.exe` (terminal wizard, no Qt) and
+  a `maplead.cmd` shim, sharing a single `_internal/` runtime, plus a version
+  resource and a multi-resolution `maplead.ico`.
+- **Windows installer** — `install.ps1` / `uninstall.ps1`: Start Menu shortcut,
+  user PATH (`maplead`), *Apps & features* entry, no admin rights.
+- `maplead/host.py` — platform glue: Windows console UTF-8 + virtual-terminal
+  mode with an ASCII fallback, `sys.stdout is None` guards for windowed builds,
+  `os.startfile`, and the taskbar AppUserModelID.
+- `--doctor` — prints version, console mode, encoding, whether colour/Unicode are
+  live, and every resolved folder; the first thing to attach to a bug report.
+- CI builds and smoke-tests the Windows bundle; releases attach the Windows ZIP
+  next to the AppImage.
+
+### Changed
+- On Windows the config, state and export folders follow the platform
+  (`%APPDATA%\maplead`, `%LOCALAPPDATA%\maplead`, and the OneDrive-aware
+  Documents folder) instead of XDG paths.
+- Colour no longer requires `TERM` to be set, so Windows terminals get ANSI
+  colours and Unicode box drawing out of the box.
+- The export summary box now degrades to ASCII together with the rest of the art
+  when output is plain, instead of mixing `#` pixels with `╔═╗` frames.
+
 ## [1.0.0] — 2026-10-17
 
 ### Added
@@ -38,4 +65,5 @@ All notable changes to MAPLEAD. Format follows [Keep a Changelog](https://keepac
 - Linux x86_64 is the only packaged platform for now; the terminal wizard still runs
   anywhere Python 3.9+ does.
 
+[Unreleased]: https://github.com/DariusDev16/maplead/compare/v1.0.0...main
 [1.0.0]: https://github.com/DariusDev16/maplead/releases/tag/v1.0.0

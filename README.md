@@ -1,6 +1,7 @@
 # MAPLEAD
 
-**Google Maps lead extractor — a Linux desktop app and a terminal wizard, same engine.**
+**Google Maps lead extractor — desktop apps for Linux and Windows plus a
+terminal wizard, one engine.**
 
 Nine questions, one spreadsheet. Pick a provider, a city, a business type and how
 many leads you want; MAPLEAD pulls local businesses out of Google Maps through a
@@ -11,6 +12,7 @@ lead-scraper API and writes them to CSV / Excel / JSON / TXT / TSV / HTML.
 | | |
 |---|---|
 | 🖥️ **Desktop app** | Qt6 window, one file, nothing to install — [`MAPLEAD-x86_64.AppImage`](docs/GUIDE.md#1-get-the-app) |
+| 🪟 **Windows** | portable `MAPLEAD.exe` + `maplead-cli.exe` in one ZIP, no admin — [`install.ps1`](docs/GUIDE.md#1-get-the-app) |
 | ⌨️ **Terminal wizard** | pure standard-library Python, no dependencies at all |
 | 🔌 **4 providers** | Outscraper · Google Places · SerpApi · DataForSEO (+ an offline demo) |
 | 🧭 **65 countries / 1044 cities** | typed, filtered, auto-completed — no spelling games |
@@ -44,11 +46,38 @@ cd maplead
 > No FUSE on your system? The launcher handles it: it unpacks the image once into
 > `~/.maplead-runtime/` and runs from there. No root, no loop device.
 
+**Windows 10/11 x64, portable ZIP** — unpack it, run the installer, done:
+
+```powershell
+Expand-Archive MAPLEAD-1.0.0-win64.zip -DestinationPath "$env:LOCALAPPDATA\Programs"
+cd "$env:LOCALAPPDATA\Programs\MAPLEAD"
+powershell -ExecutionPolicy Bypass -File .\install.ps1
+```
+
+That adds a **MAPLEAD** entry to the Start Menu and `maplead` to your PATH; it needs
+no admin rights and uninstalls from *Apps & features*. Prefer it fully portable?
+Skip `install.ps1` and double-click `MAPLEAD.exe`.
+
+`MAPLEAD.exe` is the desktop app; `maplead-cli.exe` — or just `maplead`, once the
+installer has run — is the terminal wizard with the same flags as `maplead.py`.
+SmartScreen may warn on first launch because the build is unsigned:
+*More info → Run anyway*.
+
+Building it yourself:
+
+```powershell
+git clone https://github.com/DariusDev16/maplead.git
+cd maplead
+.\build-windows.ps1 -Install      # writes %USERPROFILE%\Apps\MAPLEAD-<version>-win64.zip
+```
+
 ## 2 · Add an API key
 
 MAPLEAD never scrapes Google directly — it talks to a lead-scraper API you pay for
 (or a free trial of). In the app: **API keys…** (top right) → paste → **Save & verify**
-(it makes a real request before saving). Keys live in `~/.config/maplead/.env`, mode 600.
+(it makes a real request before saving). Keys live in the per-user config folder:
+`~/.config/maplead/.env` on Linux, `%APPDATA%\maplead\.env` on Windows (mode 600 /
+an ACL-protected profile folder).
 
 | id | service | env var | per query | e-mail / socials |
 |---|---|---|---|---|
@@ -74,7 +103,8 @@ your quota, and duplicates are removed on `place_id` (falling back to name + add
 
 ## 4 · Get the file
 
-Files land in `~/Documents/maplead/` with a timestamped name.
+Files land in your Documents folder — `~/Documents/maplead/` on Linux,
+`%USERPROFILE%\Documents\maplead\` on Windows — with a timestamped name.
 **xlsx** has a frozen header, auto-filter and a `Meta` sheet with the search parameters;
 **csv/tsv** are UTF-8 (BOM, so Excel keeps the accents); **json** keeps types and arrays.
 
@@ -112,6 +142,16 @@ Same engine, zero dependencies, Python 3.9+:
 | `--require-phone` `--require-website` `--skip-closed` | hard filters |
 | `--enrich` | Outscraper contact enrichment (costs credits) |
 | `--gui` | launch the desktop app |
+| `--doctor` | print environment diagnostics (for bug reports) |
+
+The same wizard ships as `maplead-cli.exe` in the Windows ZIP, so nothing has to be
+installed first:
+
+```powershell
+.\maplead-cli.exe --demo      # no key, no network
+.\maplead-cli.exe --gui       # hands over to MAPLEAD.exe
+.\maplead-cli.exe --doctor    # what this build thinks your Windows looks like
+```
 
 ---
 
@@ -127,8 +167,8 @@ More detail in **[docs/GUIDE.md](docs/GUIDE.md)** (user guide) and
 
 ## Status
 
-Linux is the only supported platform for now (AppImage). The terminal wizard runs
-anywhere Python 3.9+ does. macOS/Windows packaging is on the roadmap.
+Linux (AppImage) and Windows 10/11 x64 (portable ZIP) are packaged and tested in CI.
+The terminal wizard runs anywhere Python 3.9+ does. macOS packaging is on the roadmap.
 
 ## Legal
 

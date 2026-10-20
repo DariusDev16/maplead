@@ -1,0 +1,16 @@
+# Keep one canonical line ending per file type, whatever the contributor's OS.
+# Without this, a Windows clone (core.autocrlf=true) can commit CRLF into a
+# shell script and break the Linux CI and the AppImage build.
+* text=auto
+
+# scripts: the interpreter that runs them decides
+*.sh  text eol=lf
+*.py  text eol=lf
+*.spec text eol=lf
+*.cmd text eol=crlf
+*.ps1 text eol=crlf
+
+# binaries must never be touched
+*.png binary
+*.ico binary
+*.zip binary

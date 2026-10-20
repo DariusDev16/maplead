@@ -18,7 +18,9 @@ New here? Read this once, then the [README](../README.md) is just a reminder.
 
 ## 1 · Get the app
 
-Download `MAPLEAD-1.0.0-x86_64.AppImage` (Linux x86_64), then:
+### Linux x86_64
+
+Download `MAPLEAD-1.0.0-x86_64.AppImage`, then:
 
 ```bash
 chmod +x MAPLEAD-1.0.0-x86_64.AppImage     # first time only
@@ -35,6 +37,31 @@ only things it expects from the system are a display and the usual C library.
 only ships FUSE 3 (or none at all), the `maplead` launcher notices and unpacks the
 image once into `~/.maplead-runtime/`, then runs it from there. Nothing else changes,
 and the cache refreshes itself when the AppImage is rebuilt.
+
+### Windows 10/11 x64
+
+Download `MAPLEAD-1.0.0-win64.zip`, right-click → **Extract all**, then run the
+installer from the extracted folder:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\install.ps1
+```
+
+No admin rights are needed. The installer copies the app to
+`%LOCALAPPDATA%\Programs\MAPLEAD`, adds a **MAPLEAD** entry to the Start Menu, makes
+`maplead` available in new terminals and registers it under *Apps & features*.
+
+| file | what it is |
+|---|---|
+| `MAPLEAD.exe` | the desktop app (no console window) |
+| `maplead-cli.exe` | the terminal wizard (`--demo`, `--api`, `--gui`, …) |
+| `uninstall.ps1` | removes shortcuts, PATH entry and the folder (keys/exports are kept) |
+
+Prefer no installation at all? Skip `install.ps1` and double-click `MAPLEAD.exe` —
+the folder is fully portable.
+
+> **SmartScreen:** the build is not code-signed, so the first launch may say
+> "Windows protected your PC". Choose **More info → Run anyway**.
 
 ## 2 · The first launch
 
@@ -59,9 +86,10 @@ losing anything — the form, the window size and the theme are remembered betwe
 | **Remove** | clears the key from the config file |
 | **Check all saved keys** | re-tests everything that is configured |
 
-Keys are written to `~/.config/maplead/.env` with mode `600`, and are only ever sent
-to the provider you pasted them for. Real environment variables always win over that
-file, so exporting `SERPAPI_API_KEY=…` in your shell works too.
+Keys are written to `~/.config/maplead/.env` (`%APPDATA%\maplead\.env` on Windows)
+with mode `600`, and are only ever sent to the provider you pasted them for. Real
+environment variables always win over that file, so exporting
+`SERPAPI_API_KEY=…` in your shell works too.
 
 ## 4 · The search form, field by field
 
@@ -129,6 +157,7 @@ The original interface, still fully supported and dependency-free:
 ./maplead.py           # guided
 ./maplead.py --demo    # no key needed
 ./maplead.py --gui     # open the desktop app
+./maplead.py --doctor  # environment diagnostics for bug reports
 ```
 
 Guided mode shows long lists side by side, sized to your terminal, so the 65
@@ -136,16 +165,20 @@ countries and 68 verticals fit on one screen; every list is filterable by typing
 and the field picker understands `1,3-5` ranges and `all` / `none` / `rec`.
 
 Environment switches: `MAPLEAD_NO_COLOR=1`, `MAPLEAD_ASCII=1` (plain output),
-`MAPLEAD_DEBUG=1` (full tracebacks).
+`MAPLEAD_FORCE_COLOR=1` (keep colours when piping), `MAPLEAD_DEBUG=1` (full
+tracebacks). Output is deliberately plain when stdout is not a real console -
+piping into a file or another program drops the colour and the box drawing, and
+`--doctor` reports which mode you are in.
 
 ## 9 · Where files live
 
-| what | path |
-|---|---|
-| keys | `~/.config/maplead/.env` (mode 600) |
-| exports | `~/Documents/maplead/` |
-| window state / theme / last form | `~/.local/share/maplead/` |
-| unpacked AppImage (no-FUSE systems) | `~/.maplead-runtime/` |
+| what | Linux | Windows |
+|---|---|---|
+| keys | `~/.config/maplead/.env` (mode 600) | `%APPDATA%\maplead\.env` |
+| exports | `~/Documents/maplead/` | `%USERPROFILE%\Documents\maplead\` (follows OneDrive redirection) |
+| window state / theme / last form | `~/.local/share/maplead/` | `%LOCALAPPDATA%\maplead\` |
+| unpacked AppImage (no-FUSE systems) | `~/.maplead-runtime/` | – |
+| installed app | `~/Apps/MAPLEAD-*.AppImage` | `%LOCALAPPDATA%\Programs\MAPLEAD\` |
 
 Nothing is written inside the project folder or the AppImage.
 
@@ -161,8 +194,13 @@ Nothing is written inside the project folder or the AppImage.
 | `429` | rate limited: wait a minute and run again |
 | "got 60 of the 150 you asked for" | Google caps a text query at 60 results; ask for a bigger limit (more query variants run) or a wider city/region |
 | nothing matched | relax the filters first: drop `--min-rating`, un-tick "only with phone", then try another city spelling |
-| window opens bigger than the screen | it self-corrects now; if it persists, delete `~/.local/share/maplead/` and restart |
+| window opens bigger than the screen | it self-corrects now; if it persists, delete `~/.local/share/maplead/` (`%LOCALAPPDATA%\maplead\` on Windows) and restart |
 | nothing happens on double-click | your file manager may not allow executing it — run it from a terminal once, or use the menu entry |
+| **Windows:** "Windows protected your PC" | the build is unsigned — **More info → Run anyway**, or build it yourself |
+| **Windows:** `maplead` is not recognized | the installer updated the PATH; open a **new** terminal (or run `%LOCALAPPDATA%\Programs\MAPLEAD\maplead.cmd`) |
+| **Windows:** colours look like `←[36m` | you are on an old console that cannot do ANSI — use Windows Terminal, or set `MAPLEAD_NO_COLOR=1` |
+| **Windows:** output is plain / ASCII only | expected when stdout is redirected (a pipe, `> file`, or a non-console shell) — run it in the window directly; `maplead-cli.exe --doctor` shows `console=tty` and `colour=on` when it is live |
+| **Windows:** app is quarantined by antivirus | PyInstaller bootloaders are a common false positive — whitelist the folder or run from source (`python maplead.py --demo`) |
 
-Still stuck? Open an issue with the output of `maplead --selftest` and
+Still stuck? Open an issue with the output of `maplead --doctor` and
 `maplead --check-keys`.

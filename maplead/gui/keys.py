@@ -1,6 +1,7 @@
 """
-API key manager: paste a key per provider, verify it live, save it to
-~/.config/maplead/.env (mode 600).  Mirrors the CLI's `--api` wizard.
+API key manager: paste a key per provider, verify it live, save it to the
+per-user config file (~/.config/maplead/.env on Linux,
+%APPDATA%\\maplead\\.env on Windows).  Mirrors the CLI's `--api` wizard.
 """
 
 from __future__ import annotations
@@ -209,9 +210,9 @@ class KeysDialog(QDialog):
         head.addStretch(1)
         intro_lay.addLayout(head)
         intro_lay.addWidget(hint(
-            f"Keys are stored in <code>{self.env_path}</code> with mode 600 and are "
-            f"never sent anywhere except the provider you pick. Real environment "
-            f"variables always win over this file."))
+            f"Keys are stored in <code>{self.env_path}</code> (readable only by your "
+            f"user) and are never sent anywhere except the provider you pick. Real "
+            f"environment variables always win over this file."))
         root.addWidget(intro)
 
         area = QScrollArea()

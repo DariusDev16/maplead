@@ -1,11 +1,13 @@
 """
 Where MAPLEAD keeps its configuration, API keys and exports.
 
-XDG-aware so the GUI works from a read-only AppImage bundle:
+One API, three conventions - the GUI must work from a read-only bundle everywhere:
 
-    config  $XDG_CONFIG_HOME/maplead/.env      (keys, window geometry)
-    data    $XDG_DATA_HOME/maplead/            (state, history)
-    exports ~/Documents/maplead/               (lead files)
+    Linux        config  $XDG_CONFIG_HOME/maplead/.env      (keys, window geometry)
+                 data    $XDG_DATA_HOME/maplead/            (state, history)
+    Windows      config  %APPDATA%\\maplead\\.env
+                 data    %LOCALAPPDATA%\\maplead\\
+    both         exports <Documents>/maplead/               (lead files)
 
 The CLI keeps preferring a legacy `.env` that sits next to the tool, so old
 installs behave exactly as before; the GUI always uses the config dir.
@@ -15,11 +17,19 @@ from __future__ import annotations
 
 import os
 import re
+import sys
 from typing import Dict, List, Optional
+
+from . import host
 
 APP_ID = "maplead"
 APP_TITLE = "MAPLEAD"
-PACKAGE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+if getattr(sys, "frozen", False):
+    # onedir PyInstaller build: the .exe sits next to its _internal/ folder
+    PACKAGE_DIR = os.path.dirname(os.path.abspath(sys.executable))
+else:
+    PACKAGE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 
 # --------------------------------------------------------------------------- #
@@ -33,11 +43,23 @@ def _base_dir(env_var: str, fallback: str) -> str:
     return os.path.join(os.path.expanduser("~"), fallback)
 
 
+def _windows_dir(env_var: str, fallback: str) -> str:
+    """%APPDATA% / %LOCALAPPDATA%, with the literal profile path as a fallback."""
+    base = os.environ.get(env_var, "").strip()
+    if base and os.path.isabs(base):
+        return base
+    return os.path.join(os.path.expanduser("~"), *fallback.split("/"))
+
+
 def config_dir() -> str:
+    if host.WINDOWS:
+        return os.path.join(_windows_dir("APPDATA", "AppData/Roaming"), APP_ID)
     return os.path.join(_base_dir("XDG_CONFIG_HOME", ".config"), APP_ID)
 
 
 def data_dir() -> str:
+    if host.WINDOWS:
+        return os.path.join(_windows_dir("LOCALAPPDATA", "AppData/Local"), APP_ID)
     return os.path.join(_base_dir("XDG_DATA_HOME", ".local/share"), APP_ID)
 
 
@@ -57,7 +79,24 @@ def _user_dirs(key: str) -> Optional[str]:
     return None
 
 
+def _windows_documents() -> str:
+    """The real Documents folder - honours OneDrive/redirection, unlike %USERPROFILE%."""
+    try:
+        import winreg
+        key_path = r"Software\Microsoft\Windows\CurrentVersion\Explorer\User Shell Folders"
+        with winreg.OpenKey(winreg.HKEY_CURRENT_USER, key_path) as key:
+            value, _ = winreg.QueryValueEx(key, "Personal")
+        expanded = os.path.expandvars(value)
+        if os.path.isabs(expanded):
+            return expanded
+    except (ImportError, OSError, ValueError):
+        pass
+    return os.path.join(os.path.expanduser("~"), "Documents")
+
+
 def documents_dir() -> str:
+    if host.WINDOWS:
+        return _windows_documents()
     return _user_dirs("XDG_DOCUMENTS_DIR") or os.path.join(os.path.expanduser("~"), "Documents")
 
 

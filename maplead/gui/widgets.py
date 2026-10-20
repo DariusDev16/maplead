@@ -618,21 +618,5 @@ def elide(text: str, limit: int) -> str:
 
 def open_in_desktop(path_or_url: str) -> bool:
     """Hand a URL or file to the desktop's default handler."""
-    import subprocess
-    import sys
-    try:
-        if sys.platform.startswith("linux"):
-            subprocess.Popen(["xdg-open", path_or_url],
-                             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        elif sys.platform == "darwin":
-            subprocess.Popen(["open", path_or_url])
-        else:  # pragma: no cover - windows fallback
-            os_startfile(path_or_url)
-        return True
-    except Exception:
-        return False
-
-
-def os_startfile(path: str) -> None:  # pragma: no cover
-    import os
-    os.startfile(path)  # type: ignore[attr-defined]
+    from .. import host
+    return host.open_path(path_or_url)

@@ -7,6 +7,7 @@
 build/
 dist/
 .venv-gui/
+.venv-win/
 __pycache__/
 *.pyc
 *.pyo
@@ -22,3 +23,4 @@ leads/*.tsv
 # generated icons (rebuilt by packaging/render_icon.py)
 packaging/maplead-*.png
 packaging/maplead.png
+packaging/maplead.ico

@@ -12,7 +12,7 @@ import os
 import sys
 from typing import Dict, List, Optional, Sequence
 
-from . import art, engine, exporters, paths, ui
+from . import art, engine, exporters, host, paths, ui
 from .art import VERSION, c
 from .data import cities as CI
 from .data import countries as CO
@@ -25,7 +25,8 @@ APP = "MAPLEAD"
 STEP_TOTAL = 9
 
 # .env lives next to the tool when it is there (portable installs), otherwise in
-# the XDG config dir - resolved once so every message shows the real path.
+# the per-user config dir (%APPDATA% on Windows, XDG on Linux) - resolved once so
+# every message shows the real path.
 ENV_FILE = paths.env_file()
 
 
@@ -78,6 +79,8 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--no-banner", action="store_true", help="hide the ASCII art")
     p.add_argument("--list-providers", action="store_true", help="show provider status and exit")
     p.add_argument("--list-fields", action="store_true", help="show the field catalogue and exit")
+    p.add_argument("--doctor", action="store_true",
+                   help="print environment diagnostics (for bug reports) and exit")
     p.add_argument("--gui", action="store_true",
                    help="launch the MAPLEAD desktop app instead of the terminal wizard")
     p.add_argument("--version", action="version", version=f"{APP} {VERSION}")
@@ -142,6 +145,35 @@ def print_field_catalogue(provider: str | None) -> None:
                      aligns=["left", "left", "left", "left"]))
     ui.out()
     ui.hint("presets:  rec (recommended)   basic   sales   all")
+    ui.out()
+
+
+def print_diagnostics() -> None:
+    """`--doctor`: what this build thinks its host looks like (bug reports)."""
+    import platform
+
+    diag = host.diagnose()
+    rows = [
+        ("maplead", f"{VERSION}{' (frozen)' if diag['frozen'] else ' (source)'}"),
+        ("python", f"{platform.python_version()} · {platform.machine()}"),
+        ("platform", platform.platform(terse=True)),
+        ("console", "tty" if diag["console"].get("isatty") else "redirected"),
+        ("encoding", str(diag["console"].get("encoding"))),
+        ("ansi / unicode", f"{art.ANSI_OK} / {art.UNICODE}"),
+        ("colour", "on" if art.COLOR else "off (plain output)"),
+        ("config", paths.config_dir()),
+        ("data", paths.data_dir()),
+        ("exports", paths.default_export_dir()),
+        ("env file", paths.env_file()),
+        ("executable", diag["executable"]),
+    ]
+    ui.out()
+    ui.out(ui.table(["what", "value"], rows, aligns=["left", "left"]))
+    detail = "  ".join(f"{k}={v}" for k, v in diag["console"].items()
+                       if k not in ("isatty", "encoding"))
+    if detail:
+        ui.out()
+        ui.hint("console detail: " + detail)
     ui.out()
 
 
@@ -802,13 +834,19 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     try:
         if args.gui:
+            passthrough = ["--provider", args.provider] if args.provider else []
+            # a frozen CLI bundle has no PySide6: hand over to MAPLEAD.exe next to it
+            sibling = host.sibling_gui()
+            if sibling and host.spawn(sibling, passthrough):
+                return 0
             try:
                 from .gui.app import main as gui_main
             except ImportError as exc:
                 ui.error(f"the desktop app needs PySide6 ({exc}).")
                 ui.hint("pip install PySide6-Essentials   -or-   use the terminal wizard.")
+                if host.WINDOWS:
+                    ui.hint("the packaged app ships it: run MAPLEAD.exe from the same folder.")
                 return 3
-            passthrough = ["--provider", args.provider] if args.provider else []
             return gui_main(passthrough)
         if args.api:
             return run_api_setup(args)
@@ -829,6 +867,9 @@ def main(argv: Sequence[str] | None = None) -> int:
             return 0
         if args.list_fields:
             print_field_catalogue(args.provider)
+            return 0
+        if args.doctor:
+            print_diagnostics()
             return 0
         return run_wizard(args)
     except KeyboardInterrupt:

@@ -11,6 +11,7 @@ import time
 from typing import Any, Callable, Sequence
 
 from . import art
+from . import host
 from .art import GLYPH, PLAIN, _strip_ansi, c, panel, section  # noqa: F401  (re-exported)
 
 # names this module re-exports from .art for the CLI's convenience
@@ -460,7 +461,7 @@ class Progress:
         self.label = label
         self.total = total
         self.n = 0
-        self.live = sys.stdout.isatty()
+        self.live = host.stdout_is_tty()
         self.t0 = time.time()
         self._i = 0
         self._last = 0.0
@@ -510,5 +511,8 @@ class Progress:
 
 
 def clear_screen() -> None:
-    sys.stdout.write("\x1b[2J\x1b[H")
+    if art.ANSI_OK:
+        sys.stdout.write("\x1b[2J\x1b[H")
+    else:                                    # bare console: at least start on a clean block
+        sys.stdout.write("\n" * 2)
     sys.stdout.flush()

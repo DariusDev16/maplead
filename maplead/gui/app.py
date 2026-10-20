@@ -1,10 +1,10 @@
 """
 MAPLEAD Desktop - application entry point.
 
-    maplead-gui                 normal launch
-    maplead-gui --selftest      headless smoke test (builds the UI, runs a demo search)
+    MAPLEAD [--args]            normal launch (MAPLEAD.exe on Windows)
+    MAPLEAD --selftest          headless smoke test (builds the UI, runs a demo search)
 
-The AppImage launcher calls :func:`main`.
+The AppImage launcher and the Windows MAPLEAD.exe call :func:`main`.
 """
 
 from __future__ import annotations
@@ -12,12 +12,13 @@ from __future__ import annotations
 import argparse
 import os
 import sys
+import tempfile
 from typing import List, Optional, Sequence
 
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QApplication
 
-from .. import paths
+from .. import host, paths
 from ..art import VERSION
 from ..providers import PROVIDERS
 from . import theme as theme_mod
@@ -48,6 +49,49 @@ def build_parser() -> argparse.ArgumentParser:
 # boot
 # --------------------------------------------------------------------------- #
 
+def _argv(argv: Optional[Sequence[str]]) -> List[str]:
+    return list(sys.argv[1:] if argv is None else argv)
+
+
+def _prepare_selftest_streams(argv: Optional[Sequence[str]]) -> None:
+    """A windowed .exe has no stdout; give `--selftest` a log file instead of silence."""
+    if not host.frozen() and sys.stdout is not None:
+        return
+    if "--selftest" not in _argv(argv):
+        return
+    path = os.path.join(tempfile.gettempdir(), "maplead-selftest.log")
+    try:
+        stream = open(path, "w", encoding="utf-8", buffering=1)
+    except OSError:
+        return
+    sys.stdout = stream
+    sys.stderr = stream
+    import faulthandler
+    faulthandler.enable(stream)
+    print(f"MAPLEAD {VERSION} - frozen self-test, log: {path}")
+
+
+def _write_crash_log() -> None:
+    """Windowed builds have nowhere to print a traceback: keep one on disk."""
+    import datetime
+    import traceback
+
+    text = (f"\n=== {datetime.datetime.now():%Y-%m-%d %H:%M:%S} MAPLEAD {VERSION} ===\n"
+            f"{traceback.format_exc()}")
+    targets = [os.path.join(tempfile.gettempdir(), "maplead-crash.log")]
+    try:
+        targets.append(os.path.join(paths.ensure_dir(paths.data_dir()), "crash.log"))
+    except Exception:
+        pass
+    for path in targets:
+        try:
+            with open(path, "a", encoding="utf-8") as fh:
+                fh.write(text)
+            break
+        except OSError:
+            continue
+
+
 def preferred_theme() -> str:
     """Dark by default, light when the desktop asks for it."""
     if os.environ.get("MAPLEAD_LIGHT", "") not in ("", "0", "false", "no"):
@@ -76,6 +120,9 @@ def create_app(argv: Optional[Sequence[str]] = None):
     app.setDesktopFileName(DESKTOP_ID)
     app.setQuitOnLastWindowClosed(True)
 
+    # Windows: own the taskbar entry (icon + name) instead of the launcher's
+    host.set_app_user_model_id(DESKTOP_ID)
+
     from PySide6.QtGui import QIcon
     from . import icons
     app.setWindowIcon(QIcon(icons.pixmap("pin", theme_mod.DARK.accent, 64)))
@@ -89,6 +136,17 @@ def create_app(argv: Optional[Sequence[str]] = None):
 # --------------------------------------------------------------------------- #
 
 def main(argv: Optional[Sequence[str]] = None) -> int:
+    _prepare_selftest_streams(argv)
+    try:
+        return _main(argv)
+    except SystemExit:
+        raise
+    except BaseException:
+        _write_crash_log()
+        raise
+
+
+def _main(argv: Optional[Sequence[str]] = None) -> int:
     paths.load_env()
     app, args = create_app(argv)
 

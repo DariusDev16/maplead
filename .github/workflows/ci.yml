@@ -59,3 +59,60 @@ jobs:
         env:
           QT_QPA_PLATFORM: offscreen
         run: python maplead-gui.py --selftest
+
+  windows:
+    name: windows (desktop + wizard)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: install GUI dependencies
+        run: python -m pip install -q "PySide6-Essentials>=6.8" pyflakes
+
+      - name: lint (unused imports / undefined names)
+        run: python -m pyflakes maplead tools
+
+      - name: the wizard runs on a bare Windows Python
+        shell: pwsh
+        run: |
+          python maplead.py --version
+          python maplead.py --demo --country Germany --city Berlin `
+            --business dentist --fields rec --limit 60 --format xlsx `
+            --min-rating 4.0 --outdir "$env:TEMP\maplead-ci"
+          Get-ChildItem "$env:TEMP\maplead-ci"
+
+      - name: introspection still works
+        run: |
+          python maplead.py --list-providers
+          python maplead.py --list-fields --provider google
+
+      - name: headless self-test
+        env:
+          QT_QPA_PLATFORM: offscreen
+        run: python maplead-gui.py --selftest
+
+      - name: build the portable folder
+        run: .\build-windows.ps1 -NoTest
+
+      - name: smoke-test the frozen build
+        shell: pwsh
+        run: |
+          .\dist\MAPLEAD\maplead.exe --demo --country Germany --city Berlin `
+            --business dentist --fields rec --limit 20 --format csv `
+            --outdir "$env:TEMP\maplead-frozen"
+          $exe = (Resolve-Path .\dist\MAPLEAD\MAPLEAD.exe).Path
+          $proc = Start-Process -FilePath $exe -ArgumentList "--selftest" -Wait -PassThru
+          if ($proc.ExitCode -ne 0) { throw "frozen desktop self-test failed" }
+
+      - name: collect the ZIP
+        shell: pwsh
+        run: Copy-Item "$env:USERPROFILE\Apps\MAPLEAD-*-win64.zip" .
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: MAPLEAD-windows
+          path: MAPLEAD-*-win64.zip
+          if-no-files-found: error
