@@ -107,6 +107,8 @@ gui_a = Analysis(                                       # noqa: F821
         "maplead.gui.worker",
         "maplead.gui.icons",
         "maplead.gui.theme",
+        # `--cli` imports the wizard lazily, so PyInstaller cannot see it
+        "maplead.cli",
         "PySide6.QtSvg",
         "PySide6.QtPrintSupport",
     ],

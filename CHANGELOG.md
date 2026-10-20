@@ -4,6 +4,13 @@ All notable changes to MAPLEAD. Format follows [Keep a Changelog](https://keepac
 
 ## [Unreleased]
 
+## [1.1.1] — 2026-10-20
+
+### Added
+- The AppImage runs the terminal wizard with `--cli` (`MAPLEAD-*.AppImage --cli --demo`).
+  The release assets now carry a working CLI on both platforms — `maplead-cli.exe` in
+  the Windows ZIP, the same AppImage on Linux — without installing Python.
+
 ## [1.1.0] — 2026-10-20
 
 ### Added
@@ -67,6 +74,7 @@ All notable changes to MAPLEAD. Format follows [Keep a Changelog](https://keepac
 - Linux x86_64 is the only packaged platform for now; the terminal wizard still runs
   anywhere Python 3.9+ does.
 
-[Unreleased]: https://github.com/DariusDev16/maplead/compare/v1.1.0...main
+[Unreleased]: https://github.com/DariusDev16/maplead/compare/v1.1.1...main
+[1.1.1]: https://github.com/DariusDev16/maplead/releases/tag/v1.1.1
 [1.1.0]: https://github.com/DariusDev16/maplead/releases/tag/v1.1.0
 [1.0.0]: https://github.com/DariusDev16/maplead/releases/tag/v1.0.0

@@ -123,7 +123,16 @@ What it does, in order:
 5. assembles an AppDir (`usr/lib/maplead`, icons, desktop file) and copies the small
    X11/GL libraries desktops tend to lack;
 6. runs `appimagetool` to produce `~/Apps/MAPLEAD-<version>-x86_64.AppImage`;
-7. runs the self-test **inside** the produced image.
+7. runs the self-test **inside** the produced image (the window, then the wizard via
+   `--cli`).
+
+### One file, two interfaces
+
+An AppImage is a single file, so it cannot ship a second executable for the wizard the
+way the Windows ZIP ships `maplead-cli.exe`. Instead the frozen desktop binary handles
+`--cli`: `maplead/gui/app.py` checks for the flag before it builds a `QApplication`,
+strips it, and hands the rest of `argv` to `maplead.cli.main()`. PyInstaller cannot see
+a lazy import, so `maplead.cli` is listed in `hiddenimports` in both specs.
 
 ### Trimming the bundle
 

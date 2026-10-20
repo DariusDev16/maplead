@@ -20,11 +20,11 @@ New here? Read this once, then the [README](../README.md) is just a reminder.
 
 ### Linux x86_64
 
-Download `MAPLEAD-1.1.0-x86_64.AppImage`, then:
+Download `MAPLEAD-1.1.1-x86_64.AppImage`, then:
 
 ```bash
-chmod +x MAPLEAD-1.1.0-x86_64.AppImage     # first time only
-./MAPLEAD-1.1.0-x86_64.AppImage
+chmod +x MAPLEAD-1.1.1-x86_64.AppImage     # first time only
+./MAPLEAD-1.1.1-x86_64.AppImage
 ```
 
 After `./build-appimage.sh --install` you can also just type `maplead`, and the app
@@ -33,6 +33,12 @@ appears in your application menu as **MAPLEAD**.
 The AppImage bundles Qt and the ~18 small X11 libraries desktops often lack. The
 only things it expects from the system are a display and the usual C library.
 
+The same file runs the terminal wizard too — no Python needed:
+
+```bash
+./MAPLEAD-1.1.1-x86_64.AppImage --cli --demo
+```
+
 **No FUSE?** Older AppImages mount themselves through `libfuse.so.2`. If your system
 only ships FUSE 3 (or none at all), the `maplead` launcher notices and unpacks the
 image once into `~/.maplead-runtime/`, then runs it from there. Nothing else changes,
@@ -40,7 +46,7 @@ and the cache refreshes itself when the AppImage is rebuilt.
 
 ### Windows 10/11 x64
 
-Download `MAPLEAD-1.1.0-win64.zip`, right-click → **Extract all**, then run the
+Download `MAPLEAD-1.1.1-win64.zip`, right-click → **Extract all**, then run the
 installer from the extracted folder:
 
 ```powershell
@@ -158,6 +164,13 @@ The original interface, still fully supported and dependency-free:
 ./maplead.py --demo    # no key needed
 ./maplead.py --gui     # open the desktop app
 ./maplead.py --doctor  # environment diagnostics for bug reports
+```
+
+Without Python, the packaged builds carry the same wizard:
+
+```bash
+./MAPLEAD-1.1.1-x86_64.AppImage --cli --demo    # Linux: the AppImage is both
+.\maplead-cli.exe --demo                        # Windows: a separate, Qt-free .exe
 ```
 
 Guided mode shows long lists side by side, sized to your terminal, so the 65

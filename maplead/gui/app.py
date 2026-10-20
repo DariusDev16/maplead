@@ -2,9 +2,12 @@
 MAPLEAD Desktop - application entry point.
 
     MAPLEAD [--args]            normal launch (MAPLEAD.exe on Windows)
+    MAPLEAD --cli [args]        run the terminal wizard instead of the window
     MAPLEAD --selftest          headless smoke test (builds the UI, runs a demo search)
 
-The AppImage launcher and the Windows MAPLEAD.exe call :func:`main`.
+The AppImage launcher and the Windows MAPLEAD.exe call :func:`main`. Windows also
+ships a separate `maplead-cli.exe` that does not link Qt at all; the AppImage is a
+single file, so `--cli` is how the wizard is reached there.
 """
 
 from __future__ import annotations
@@ -33,7 +36,10 @@ DESKTOP_ID = "io.github.maplead.Desktop"
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
         prog="maplead-gui",
-        description=f"MAPLEAD {VERSION} desktop - interactive Google Maps lead extractor")
+        description=f"MAPLEAD {VERSION} desktop - interactive Google Maps lead extractor",
+        epilog="--cli sends everything after it to the terminal wizard, "
+               "e.g.  MAPLEAD --cli --demo",
+    )
     p.add_argument("--provider", choices=list(PROVIDERS), help="pre-select a provider")
     p.add_argument("--country", help="pre-select a country (name or ISO code)")
     p.add_argument("--city", help="pre-select a city")
@@ -51,6 +57,17 @@ def build_parser() -> argparse.ArgumentParser:
 
 def _argv(argv: Optional[Sequence[str]]) -> List[str]:
     return list(sys.argv[1:] if argv is None else argv)
+
+
+def _run_cli(args: List[str]) -> int:
+    """`--cli` runs the terminal wizard: one binary, two interfaces.
+
+    The AppImage cannot carry a second executable next to itself, so Linux users
+    reach the wizard through `--cli` instead of installing Python. Everything
+    after the flag is handed to the wizard untouched.
+    """
+    from ..cli import main as cli_main
+    return cli_main([a for a in args if a != "--cli"])
 
 
 def _prepare_selftest_streams(argv: Optional[Sequence[str]]) -> None:
@@ -136,6 +153,9 @@ def create_app(argv: Optional[Sequence[str]] = None):
 # --------------------------------------------------------------------------- #
 
 def main(argv: Optional[Sequence[str]] = None) -> int:
+    args = _argv(argv)
+    if "--cli" in args:
+        return _run_cli(args)
     _prepare_selftest_streams(argv)
     try:
         return _main(argv)

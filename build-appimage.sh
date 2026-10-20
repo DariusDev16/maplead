@@ -210,6 +210,18 @@ if [[ "$RUN_TEST" == "1" ]]; then
     fi
   fi
   tail -12 "$BUILD/selftest.log"
+
+  # the same file also carries the terminal wizard (`--cli`)
+  run_cli() {
+    "$@" --cli --demo --country Germany --city Berlin --business dentist \
+         --fields rec --limit 5 --format csv --outdir "$BUILD/cli-leads"
+  }
+  if ! run_cli "$OUT" >"$BUILD/selftest-cli.log" 2>&1; then
+    if ! APPIMAGE_EXTRACT_AND_RUN=1 run_cli "$OUT" >>"$BUILD/selftest-cli.log" 2>&1; then
+      echo "!! CLI selftest failed:"; tail -30 "$BUILD/selftest-cli.log"; exit 1
+    fi
+  fi
+  tail -3 "$BUILD/selftest-cli.log"
 fi
 
 say "done"

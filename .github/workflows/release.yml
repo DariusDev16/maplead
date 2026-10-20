@@ -43,6 +43,10 @@ jobs:
           APP="$(ls "$HOME/Apps"/MAPLEAD-*.AppImage | head -1)"
           chmod +x "$APP"
           "$APP" --selftest
+          # the same file must also run the terminal wizard
+          "$APP" --cli --version
+          "$APP" --cli --demo --country Germany --city Berlin --business dentist \
+            --fields rec --limit 5 --format csv --outdir "$RUNNER_TEMP/cli-leads"
 
       - name: describe
         id: meta

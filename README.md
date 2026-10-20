@@ -31,8 +31,8 @@ lead-scraper API and writes them to CSV / Excel / JSON / TXT / TSV / HTML.
 **Linux x86_64, AppImage** — one file, no packages, no root:
 
 ```bash
-chmod +x MAPLEAD-1.1.0-x86_64.AppImage
-./MAPLEAD-1.1.0-x86_64.AppImage
+chmod +x MAPLEAD-1.1.1-x86_64.AppImage
+./MAPLEAD-1.1.1-x86_64.AppImage
 ```
 
 Building it yourself (also fine for arm64/other distros with a rebuild):
@@ -49,7 +49,7 @@ cd maplead
 **Windows 10/11 x64, portable ZIP** — unpack it, run the installer, done:
 
 ```powershell
-Expand-Archive MAPLEAD-1.1.0-win64.zip -DestinationPath "$env:LOCALAPPDATA\Programs"
+Expand-Archive MAPLEAD-1.1.1-win64.zip -DestinationPath "$env:LOCALAPPDATA\Programs"
 cd "$env:LOCALAPPDATA\Programs\MAPLEAD"
 powershell -ExecutionPolicy Bypass -File .\install.ps1
 ```
@@ -142,6 +142,7 @@ Same engine, zero dependencies, Python 3.9+:
 | `--require-phone` `--require-website` `--skip-closed` | hard filters |
 | `--enrich` | Outscraper contact enrichment (costs credits) |
 | `--gui` | launch the desktop app |
+| `--cli` | run the wizard from the desktop binary (Linux AppImage — no Python needed) |
 | `--doctor` | print environment diagnostics (for bug reports) |
 
 The same wizard ships as `maplead-cli.exe` in the Windows ZIP, so nothing has to be
@@ -152,6 +153,18 @@ installed first:
 .\maplead-cli.exe --gui       # hands over to MAPLEAD.exe
 .\maplead-cli.exe --doctor    # what this build thinks your Windows looks like
 ```
+
+On Linux the wizard is inside the AppImage — the same file as the desktop app, so
+nothing has to be installed first either:
+
+```bash
+./MAPLEAD-1.1.1-x86_64.AppImage --cli --demo
+./MAPLEAD-1.1.1-x86_64.AppImage --cli --country DE --city Berlin --business dentist
+./MAPLEAD-1.1.1-x86_64.AppImage --cli --doctor
+```
+
+You can add `~/.local/bin/maplead-cli` yourself (`#!/bin/sh` + `exec "$HOME/Apps"/MAPLEAD-*-x86_64.AppImage --cli "$@"`)
+if you want the wizard on the PATH.
 
 ---
 
