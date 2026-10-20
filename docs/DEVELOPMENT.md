@@ -77,7 +77,7 @@ maplead/
 packaging/              icon (svg+png+ico), .desktop file, PyInstaller specs, launchers
 tools/screenshots.py    regenerates docs/screenshots/*
 build-appimage.sh       one-command AppImage build (+ optional --install)
-build-windows.ps1       one-command Windows build (+ optional -Install)
+build-windows.ps1       one-command Windows build: one portable .exe
 docs/                   user guide, development notes and screenshots
 ```
 
@@ -128,11 +128,13 @@ What it does, in order:
 
 ### One file, two interfaces
 
-An AppImage is a single file, so it cannot ship a second executable for the wizard the
-way the Windows ZIP ships `maplead-cli.exe`. Instead the frozen desktop binary handles
-`--cli`: `maplead/gui/app.py` checks for the flag before it builds a `QApplication`,
-strips it, and hands the rest of `argv` to `maplead.cli.main()`. PyInstaller cannot see
-a lazy import, so `maplead.cli` is listed in `hiddenimports` in both specs.
+Both packaged builds are a single file per platform, so neither can ship a second
+executable for the wizard. Instead the frozen desktop binary handles `--cli`:
+`maplead/gui/app.py` looks at `argv` before it builds a `QApplication`, strips
+`--cli`, and hands the rest to `maplead.cli.main()`. Any flag the window's own
+parser does not recognise (`--demo`, `--doctor`, `-k`, …) is routed there too, so
+`MAPLEAD --demo` works without the explicit `--cli`. PyInstaller cannot see a lazy
+import, so `maplead.cli` is listed in `hiddenimports` in both specs.
 
 ### Trimming the bundle
 
@@ -146,8 +148,7 @@ sure nothing was needed after all.
 Requires Windows 10/11 x64 and Python 3.9+ (the script finds `py` or `python`):
 
 ```powershell
-.\build-windows.ps1                   # build + smoke test -> %USERPROFILE%\Apps\MAPLEAD-<v>-win64.zip
-.\build-windows.ps1 -Install          # …and install into %LOCALAPPDATA%\Programs\MAPLEAD
+.\build-windows.ps1                   # build + smoke test -> %USERPROFILE%\Apps\MAPLEAD-<v>-windows-x64.exe
 .\build-windows.ps1 -NoTest           # build only
 .\build-windows.ps1 -OutDir D:\apps   # somewhere else
 ```
@@ -161,33 +162,26 @@ What it does, in order:
 2. renders the PNG icons and the multi-resolution `maplead.ico` from
    `packaging/maplead.svg` (`render_icon.py` assembles the ICO by hand — PNG
    entries, so no Pillow and no ImageMagick);
-3. runs PyInstaller with `packaging/maplead-win.spec`, which also writes a version
-   resource (Details tab + *Apps & features* version);
-4. runs the demo wizard and the GUI self-test, from source **and** frozen;
-5. zips `dist\MAPLEAD\` into `%USERPROFILE%\Apps\MAPLEAD-<version>-win64.zip`.
+3. runs PyInstaller with `packaging/maplead-win.spec` — **onefile**, so the result
+   is a single `dist\MAPLEAD.exe`; the spec also writes a version resource
+   (Details tab + *Apps & features* version);
+4. runs `--version`, `--doctor`, the demo wizard and the GUI self-test, from
+   source **and** from the frozen `.exe`;
+5. copies it to `%USERPROFILE%\Apps\MAPLEAD-<version>-windows-x64.exe`.
 
-The spec builds one folder with two executables from separate `Analysis` graphs:
+### The Windows .exe is a console program on purpose
 
-| file | subsystem | contents |
-|---|---|---|
-| `MAPLEAD.exe` | windowed | Qt6 desktop app |
-| `maplead-cli.exe` | console | terminal wizard, no Qt at all (`excludes=["PySide6"]`) |
-| `maplead.cmd` | shim | what `maplead` on the PATH actually runs |
+`MAPLEAD.exe` uses the console subsystem (`console=True`). That is what makes the
+wizard usable from cmd/PowerShell: cmd only waits for console programs and only
+hands stdin to them — a windowed build would print after the prompt reappeared and
+fight cmd for the keyboard. The price is a console window when the same file is
+double-clicked, so the GUI path calls `host.quiet_console()`, which hides it again
+— but only when no shell owns it (the parent process is `explorer.exe`).
 
-The console executable cannot be called `maplead.exe`: Windows paths are
-case-insensitive, so it would be the same file as `MAPLEAD.exe` and the second
-build would silently overwrite the first. The `.cmd` shim (written by the build
-script and by `install.ps1`) gives users the expected `maplead` command.
-
-They share a single `_internal/` runtime, so the ZIP holds one Qt bundle, not two.
-Because the console build has no PySide6, `maplead --gui` looks for `MAPLEAD.exe`
-next to `sys.executable` (`host.sibling_gui()`) and starts it detached instead of
-importing Qt.
-
-`packaging/install-windows.ps1` is copied into the ZIP as `install.ps1`. It copies
-the folder to `%LOCALAPPDATA%\Programs\MAPLEAD`, writes a Start Menu shortcut,
-appends the folder to the user PATH and registers an *Apps & features* entry whose
-uninstall string points at `uninstall.ps1`. Neither script needs admin rights.
+Since the file is onefile, PyInstaller unpacks the bundle into `%TEMP%` at every
+launch: the first window takes a few seconds to appear. `onedir` stays available by
+removing `onefile` from the spec if startup time ever matters more than the single
+file.
 
 ### Windows-specific code paths
 
@@ -200,6 +194,8 @@ uninstall string points at `uninstall.ps1`. Neither script needs admin rights.
   falls back to ASCII glyphs and no colour.
 - **No stdout** — a windowed PyInstaller app has `sys.stdout is None`; every
   `isatty()` call is guarded, so `--selftest` still runs and exits with a status.
+- **Console window** — `quiet_console()` hides the console that a double-click
+  creates (parent `explorer.exe`), and leaves a shell's console alone.
 - **Folders** — `%APPDATA%\maplead` for keys, `%LOCALAPPDATA%\maplead` for state,
   and the *real* Documents folder read from `User Shell Folders` (OneDrive-aware).
 - **Opening files/URLs** — `os.startfile()`, with `xdg-open` / `open` elsewhere.
@@ -227,12 +223,12 @@ QT_QPA_PLATFORM=offscreen ./maplead-gui.py --selftest
 MAPLEAD_DEBUG=1 ./maplead-gui.py --selftest     # full tracebacks
 ```
 
-On Windows the frozen app has no console to print to, so the build script only
-checks its exit code:
+On Windows the frozen app prints to the console it borrowed, so the build script
+runs it directly and checks the exit code:
 
 ```powershell
 $env:QT_QPA_PLATFORM = "offscreen"
-.\dist\MAPLEAD\MAPLEAD.exe --selftest        # exit 0 = window, demo run, xlsx, widgets ok
+.\dist\MAPLEAD.exe --selftest                # exit 0 = window, demo run, xlsx, widgets ok
 ```
 
 ## Publishing without a system git

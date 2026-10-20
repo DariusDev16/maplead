@@ -4,16 +4,19 @@ PyInstaller build for MAPLEAD on Windows.
 
     .venv-win\\Scripts\\python -m PyInstaller --noconfirm packaging/maplead-win.spec
 
-Produces `dist/MAPLEAD/`, a portable folder that needs no installer and no
-Python:
+Produces one file, `dist/MAPLEAD.exe` (~1xx MB, onefile), that is both the
+desktop app and the terminal wizard:
 
-    MAPLEAD.exe      windowed desktop app (no console flash)
-    maplead-cli.exe  terminal wizard (real console, colours, UTF-8)
-    _internal/     Qt + Python runtime shared by both
+    MAPLEAD.exe                 double-click: the Qt window
+    MAPLEAD.exe --cli --demo    from cmd/PowerShell: the wizard, in that console
 
-Both executables come from the same source tree but have separate `Analysis`
-graphs: the console build drops PySide6 entirely (it is ~150 MB of Qt that the
-wizard never uses) and hands `--gui` over to MAPLEAD.exe instead.
+The console subsystem is deliberate: cmd only waits for, and only hands stdin
+to, console programs. A windowed .exe would leave the wizard fighting cmd for
+the keyboard. The GUI path hides the console window again (host.quiet_console),
+so a double-click still ends up with just the window.
+
+Everything the wizard needs is stdlib, but it lives in the same binary, so the
+single Analysis below includes PySide6.
 """
 
 import re
@@ -51,7 +54,7 @@ def _windows_version_resource():
                 StringStruct("CompanyName", "MAPLEAD contributors"),
                 StringStruct("FileDescription", "MAPLEAD - Google Maps lead extractor"),
                 StringStruct("FileVersion", VERSION),
-                StringStruct("InternalName", "maplead"),
+                StringStruct("InternalName", "MAPLEAD"),
                 StringStruct("LegalCopyright", "MIT License"),
                 StringStruct("OriginalFilename", "MAPLEAD.exe"),
                 StringStruct("ProductName", "MAPLEAD"),
@@ -85,21 +88,19 @@ QT_EXCLUDES = [
     "PySide6.QtHttpServer", "PySide6.QtConcurrent", "PySide6.QtOpenGL", "PySide6.QtOpenGLWidgets",
 ]
 
-COMMON_EXCLUDES = QT_EXCLUDES + [
+EXCLUDES = QT_EXCLUDES + [
     "tkinter", "unittest", "pydoc_data", "test", "lib2to3", "distutils",
     "matplotlib", "numpy", "pandas", "PIL", "setuptools", "pip",
 ]
 
-# --------------------------------------------------------------------------- #
-# desktop app (PySide6)
-# --------------------------------------------------------------------------- #
-
-gui_a = Analysis(                                       # noqa: F821
+a = Analysis(                                           # noqa: F821
     [str(PACKAGING / "gui_entry.py")],
     pathex=[str(ROOT)],
     binaries=[],
     datas=[(str(PACKAGING / "maplead.svg"), "share/maplead")],
     hiddenimports=[
+        # `--cli` imports the wizard lazily, so PyInstaller cannot see it
+        "maplead.cli",
         "maplead.gui.app",
         "maplead.gui.main_window",
         "maplead.gui.keys",
@@ -107,31 +108,31 @@ gui_a = Analysis(                                       # noqa: F821
         "maplead.gui.worker",
         "maplead.gui.icons",
         "maplead.gui.theme",
-        # `--cli` imports the wizard lazily, so PyInstaller cannot see it
-        "maplead.cli",
         "PySide6.QtSvg",
         "PySide6.QtPrintSupport",
     ],
     hookspath=[],
     runtime_hooks=[],
-    excludes=COMMON_EXCLUDES,
+    excludes=EXCLUDES,
     noarchive=False,
     optimize=0,
 )
 
-gui_pyz = PYZ(gui_a.pure)                               # noqa: F821
+pyz = PYZ(a.pure)                                       # noqa: F821
 
-gui_exe = EXE(                                          # noqa: F821
-    gui_pyz,
-    gui_a.scripts,
+exe = EXE(                                              # noqa: F821
+    pyz,
+    a.scripts,
+    a.binaries,
+    a.datas,
     [],
-    exclude_binaries=True,
     name="MAPLEAD",
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
     upx=False,
-    console=False,
+    runtime_tmpdir=None,
+    console=True,                                       # see the docstring
     disable_windowed_traceback=False,
     argv_emulation=False,
     target_arch=None,
@@ -139,59 +140,4 @@ gui_exe = EXE(                                          # noqa: F821
     entitlements_file=None,
     icon=str(ICON),
     version=VERSION_ARG,
-)
-
-# --------------------------------------------------------------------------- #
-# terminal wizard (stdlib only - no Qt in this graph)
-# --------------------------------------------------------------------------- #
-
-cli_a = Analysis(                                       # noqa: F821
-    [str(PACKAGING / "cli_entry.py")],
-    pathex=[str(ROOT)],
-    binaries=[],
-    datas=[],
-    hiddenimports=["maplead.cli"],
-    hookspath=[],
-    runtime_hooks=[],
-    excludes=COMMON_EXCLUDES + ["PySide6", "shiboken6"],
-    noarchive=False,
-    optimize=0,
-)
-
-cli_pyz = PYZ(cli_a.pure)                               # noqa: F821
-
-cli_exe = EXE(                                          # noqa: F821
-    cli_pyz,
-    cli_a.scripts,
-    [],
-    exclude_binaries=True,
-    # NOT "maplead": Windows filenames are case-insensitive, so it would collide
-    # with MAPLEAD.exe and one of the two would silently overwrite the other.
-    # The bundled maplead.cmd shim gives users the `maplead` command back.
-    name="maplead-cli",
-    debug=False,
-    bootloader_ignore_signals=False,
-    strip=False,
-    upx=False,
-    console=True,
-    disable_windowed_traceback=False,
-    argv_emulation=False,
-    target_arch=None,
-    codesign_identity=None,
-    entitlements_file=None,
-    icon=str(ICON),
-    version=VERSION_ARG,
-)
-
-coll = COLLECT(                                         # noqa: F821
-    gui_exe,
-    gui_a.binaries,
-    gui_a.datas,
-    cli_exe,
-    cli_a.binaries,
-    cli_a.datas,
-    strip=False,
-    upx=False,
-    upx_exclude=[],
-    name="MAPLEAD",
 )

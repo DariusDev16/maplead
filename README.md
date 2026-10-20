@@ -12,7 +12,7 @@ lead-scraper API and writes them to CSV / Excel / JSON / TXT / TSV / HTML.
 | | |
 |---|---|
 | 🖥️ **Desktop app** | Qt6 window, one file, nothing to install — [`MAPLEAD-x86_64.AppImage`](docs/GUIDE.md#1-get-the-app) |
-| 🪟 **Windows** | portable `MAPLEAD.exe` + `maplead-cli.exe` in one ZIP, no admin — [`install.ps1`](docs/GUIDE.md#1-get-the-app) |
+| 🪟 **Windows** | one portable `MAPLEAD.exe`, no admin, no install — [`MAPLEAD-windows-x64.exe`](docs/GUIDE.md#1-get-the-app) |
 | ⌨️ **Terminal wizard** | pure standard-library Python, no dependencies at all |
 | 🔌 **4 providers** | Outscraper · Google Places · SerpApi · DataForSEO (+ an offline demo) |
 | 🧭 **65 countries / 1044 cities** | typed, filtered, auto-completed — no spelling games |
@@ -31,8 +31,8 @@ lead-scraper API and writes them to CSV / Excel / JSON / TXT / TSV / HTML.
 **Linux x86_64, AppImage** — one file, no packages, no root:
 
 ```bash
-chmod +x MAPLEAD-1.1.1-x86_64.AppImage
-./MAPLEAD-1.1.1-x86_64.AppImage
+chmod +x MAPLEAD-1.1.2-x86_64.AppImage
+./MAPLEAD-1.1.2-x86_64.AppImage
 ```
 
 Building it yourself (also fine for arm64/other distros with a rebuild):
@@ -46,20 +46,21 @@ cd maplead
 > No FUSE on your system? The launcher handles it: it unpacks the image once into
 > `~/.maplead-runtime/` and runs from there. No root, no loop device.
 
-**Windows 10/11 x64, portable ZIP** — unpack it, run the installer, done:
+**Windows 10/11 x64, one .exe** — download it and double-click:
 
 ```powershell
-Expand-Archive MAPLEAD-1.1.1-win64.zip -DestinationPath "$env:LOCALAPPDATA\Programs"
-cd "$env:LOCALAPPDATA\Programs\MAPLEAD"
-powershell -ExecutionPolicy Bypass -File .\install.ps1
+.\MAPLEAD-1.1.2-windows-x64.exe
 ```
 
-That adds a **MAPLEAD** entry to the Start Menu and `maplead` to your PATH; it needs
-no admin rights and uninstalls from *Apps & features*. Prefer it fully portable?
-Skip `install.ps1` and double-click `MAPLEAD.exe`.
+Nothing to unpack and nothing to install: the file is the whole app. It is also
+the terminal wizard, with exactly the same flags as `maplead.py`:
 
-`MAPLEAD.exe` is the desktop app; `maplead-cli.exe` — or just `maplead`, once the
-installer has run — is the terminal wizard with the same flags as `maplead.py`.
+```powershell
+.\MAPLEAD-1.1.2-windows-x64.exe --cli            # guided wizard
+.\MAPLEAD-1.1.2-windows-x64.exe --cli --demo     # no key, no network
+.\MAPLEAD-1.1.2-windows-x64.exe --doctor         # host diagnostics
+```
+
 SmartScreen may warn on first launch because the build is unsigned:
 *More info → Run anyway*.
 
@@ -68,7 +69,7 @@ Building it yourself:
 ```powershell
 git clone https://github.com/DariusDev16/maplead.git
 cd maplead
-.\build-windows.ps1 -Install      # writes %USERPROFILE%\Apps\MAPLEAD-<version>-win64.zip
+.\build-windows.ps1               # writes %USERPROFILE%\Apps\MAPLEAD-<version>-windows-x64.exe
 ```
 
 ## 2 · Add an API key
@@ -142,25 +143,28 @@ Same engine, zero dependencies, Python 3.9+:
 | `--require-phone` `--require-website` `--skip-closed` | hard filters |
 | `--enrich` | Outscraper contact enrichment (costs credits) |
 | `--gui` | launch the desktop app |
-| `--cli` | run the wizard from the desktop binary (Linux AppImage — no Python needed) |
+| `--cli` | run the wizard from the desktop binary (both platforms — no Python needed) |
 | `--doctor` | print environment diagnostics (for bug reports) |
 
-The same wizard ships as `maplead-cli.exe` in the Windows ZIP, so nothing has to be
-installed first:
+The Windows `.exe` carries the same wizard, so nothing has to be installed first —
+and on Linux the AppImage does the same through `--cli`:
 
 ```powershell
-.\maplead-cli.exe --demo      # no key, no network
-.\maplead-cli.exe --gui       # hands over to MAPLEAD.exe
-.\maplead-cli.exe --doctor    # what this build thinks your Windows looks like
+.\MAPLEAD-*-windows-x64.exe --cli --demo      # no key, no network
+.\MAPLEAD-*-windows-x64.exe --cli --doctor    # what this build thinks your Windows looks like
+```
+
+```bash
+./MAPLEAD-*-x86_64.AppImage --cli --demo
 ```
 
 On Linux the wizard is inside the AppImage — the same file as the desktop app, so
 nothing has to be installed first either:
 
 ```bash
-./MAPLEAD-1.1.1-x86_64.AppImage --cli --demo
-./MAPLEAD-1.1.1-x86_64.AppImage --cli --country DE --city Berlin --business dentist
-./MAPLEAD-1.1.1-x86_64.AppImage --cli --doctor
+./MAPLEAD-1.1.2-x86_64.AppImage --cli --demo
+./MAPLEAD-1.1.2-x86_64.AppImage --cli --country DE --city Berlin --business dentist
+./MAPLEAD-1.1.2-x86_64.AppImage --cli --doctor
 ```
 
 You can add `~/.local/bin/maplead-cli` yourself (`#!/bin/sh` + `exec "$HOME/Apps"/MAPLEAD-*-x86_64.AppImage --cli "$@"`)

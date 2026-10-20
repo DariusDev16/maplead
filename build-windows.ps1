@@ -1,7 +1,7 @@
 #Requires -Version 5.1
 <#
 .SYNOPSIS
-    Build MAPLEAD for Windows x64 - portable folder + ZIP.
+    Build MAPLEAD for Windows x64 - a single portable .exe.
 
 .DESCRIPTION
     One command, no admin rights, nothing installed system-wide:
@@ -11,32 +11,29 @@
     What it does, in order:
       1. creates/updates .venv-win (PySide6-Essentials + PyInstaller);
       2. renders the PNG icons and the multi-size maplead.ico from the SVG;
-      3. runs PyInstaller with packaging/maplead-win.spec - one folder with
-         MAPLEAD.exe (desktop) and maplead-cli.exe (terminal wizard);
-      4. runs the headless self-test, from source and from the frozen build;
-      5. zips the result into %USERPROFILE%\Apps\MAPLEAD-<version>-win64.zip.
+      3. runs PyInstaller with packaging/maplead-win.spec -> dist\MAPLEAD.exe,
+         one file that is both the desktop app and the terminal wizard;
+      4. smoke-tests --version, --demo, --doctor and --selftest, from source
+         and from the frozen exe;
+      5. copies the result to %USERPROFILE%\Apps\MAPLEAD-<version>-windows-x64.exe.
 
 .PARAMETER OutDir
-    Where the ZIP is written. Defaults to %USERPROFILE%\Apps (outside the repo,
+    Where the .exe is written. Defaults to %USERPROFILE%\Apps (outside the repo,
     so a `git clean` never eats the product).
 
 .PARAMETER NoTest
     Skip the self-tests.
 
-.PARAMETER Install
-    Also install into %LOCALAPPDATA%\Programs\MAPLEAD (Start Menu + PATH).
-
 .PARAMETER Python
     Bootstrap interpreter to create the venv with. Defaults to `py` / `python`.
 
 .EXAMPLE
-    .\build-windows.ps1 -Install
+    .\build-windows.ps1
 #>
 [CmdletBinding()]
 param(
     [string]$OutDir = (Join-Path $env:USERPROFILE "Apps"),
     [switch]$NoTest,
-    [switch]$Install,
     [string]$Python = ""
 )
 
@@ -60,14 +57,16 @@ Set-Location -LiteralPath $Root
 
 $Venv = Join-Path $Root ".venv-win"
 $Py = Join-Path $Venv "Scripts\python.exe"
-$Dist = Join-Path $Root "dist\MAPLEAD"
+$Dist = Join-Path $Root "dist\MAPLEAD.exe"
 
 $Version = (Select-String -Path (Join-Path $Root "maplead\art.py") `
         -Pattern 'VERSION = "([^"]+)"' -AllMatches).Matches[0].Groups[1].Value
 if (-not $Version) { throw "could not read VERSION from maplead\art.py" }
 
+$Product = "MAPLEAD-$Version-windows-x64.exe"
+
 # --------------------------------------------------------------------------- #
-Write-Step "1/6  python environment"
+Write-Step "1/5  python environment"
 # --------------------------------------------------------------------------- #
 if (-not (Test-Path -LiteralPath $Py)) {
     if ($Python) {
@@ -105,22 +104,22 @@ $qt = & $Py -c "from PySide6 import QtCore; print(QtCore.__version__)"
 Write-Host "    python $(& $Py -c 'import sys; print(sys.version.split()[0])')  |  PySide6 $qt"
 
 # --------------------------------------------------------------------------- #
-Write-Step "2/6  icons"
+Write-Step "2/5  icons"
 # --------------------------------------------------------------------------- #
 $env:QT_QPA_PLATFORM = "offscreen"
 Invoke-Python @("packaging/render_icon.py")
 
 # --------------------------------------------------------------------------- #
-Write-Step "3/6  pyinstaller (this is the slow part)"
+Write-Step "3/5  pyinstaller (this is the slow part)"
 # --------------------------------------------------------------------------- #
-# A terminal or Explorer window left open inside dist\MAPLEAD keeps the folder
-# locked, which PyInstaller can only report as "Access is denied" -name it early.
+# A running copy of the previous build keeps the file locked; say so plainly
+# instead of letting PyInstaller fail with "Access is denied".
 if (Test-Path -LiteralPath $Dist) {
     try {
-        Remove-Item -LiteralPath $Dist -Recurse -Force -ErrorAction Stop
+        Remove-Item -LiteralPath $Dist -Force -ErrorAction Stop
     }
     catch {
-        throw "cannot replace $Dist - something still has it open. Close any terminal or Explorer window inside that folder and run again."
+        throw "cannot replace $Dist - it is running. Close MAPLEAD and run again."
     }
 }
 
@@ -129,82 +128,58 @@ Invoke-Python @("-m", "PyInstaller", "--noconfirm", "--clean",
     "--workpath", (Join-Path $Root "build\work"),
     "packaging/maplead-win.spec")
 
-if (-not (Test-Path -LiteralPath (Join-Path $Dist "MAPLEAD.exe"))) {
-    throw "build finished without dist\MAPLEAD\MAPLEAD.exe"
-}
-
-
-# --------------------------------------------------------------------------- #
-Write-Step "4/6  portable extras"
-# --------------------------------------------------------------------------- #
-@'
-@echo off
-"%~dp0maplead-cli.exe" %*
-'@ | Set-Content -LiteralPath (Join-Path $Dist "maplead.cmd") -Encoding ASCII
-
-Copy-Item -LiteralPath (Join-Path $Root "packaging\install-windows.ps1") `
-    -Destination (Join-Path $Dist "install.ps1") -Force
-Copy-Item -LiteralPath (Join-Path $Root "packaging\uninstall-windows.ps1") `
-    -Destination (Join-Path $Dist "uninstall.ps1") -Force
-foreach ($doc in @("README.md", "LICENSE", "CHANGELOG.md")) {
-    $path = Join-Path $Root $doc
-    if (Test-Path -LiteralPath $path) {
-        Copy-Item -LiteralPath $path -Destination (Join-Path $Dist $doc) -Force
-    }
+if (-not (Test-Path -LiteralPath $Dist)) {
+    throw "build finished without dist\MAPLEAD.exe"
 }
 
 # --------------------------------------------------------------------------- #
-Write-Step "5/6  smoke test"
+Write-Step "4/5  smoke test"
 # --------------------------------------------------------------------------- #
 if ($NoTest) {
     Write-Host "    skipped (-NoTest)"
 }
 else {
-    Write-Host "    source build: terminal wizard"
     $leads = Join-Path $env:TEMP "maplead-selftest-cli"
+
+    Write-Host "    source: terminal wizard"
     Invoke-Python @("maplead.py", "--demo", "--country", "Germany", "--city", "Berlin",
         "--business", "dentist", "--fields", "rec", "--limit", "30",
         "--format", "xlsx", "--outdir", $leads)
 
-    Write-Host "    source build: desktop app (headless)"
+    Write-Host "    source: desktop app (headless)"
     Invoke-Python @("maplead-gui.py", "--selftest")
 
-    Write-Host "    frozen build: terminal wizard"
-    & (Join-Path $Dist "maplead-cli.exe") --demo --country Germany --city Berlin `
-        --business dentist --fields rec --limit 20 --format csv --outdir $leads
+    Write-Host "    frozen: one exe, both interfaces"
+    & $Dist --version
+    if ($LASTEXITCODE -ne 0) { throw "MAPLEAD.exe --version failed" }
+    & $Dist --doctor *> $null
+    if ($LASTEXITCODE -ne 0) { throw "MAPLEAD.exe --doctor failed" }
+    & $Dist --demo --country Germany --city Berlin --business dentist `
+        --fields rec --limit 20 --format csv --outdir $leads
     if ($LASTEXITCODE -ne 0) { throw "the frozen wizard failed (exit $LASTEXITCODE)" }
 
-    Write-Host "    frozen build: desktop app (headless)"
-    $proc = Start-Process -FilePath (Join-Path $Dist "MAPLEAD.exe") `
-        -ArgumentList "--selftest" -WorkingDirectory $Dist -Wait -PassThru
+    Write-Host "    frozen: desktop app (headless)"
+    $proc = Start-Process -FilePath $Dist -ArgumentList "--selftest" `
+        -WorkingDirectory (Join-Path $Root "dist") -Wait -PassThru
     if ($proc.ExitCode -ne 0) { throw "the frozen desktop app failed (exit $($proc.ExitCode))" }
     Write-Host "    ok"
 }
 Remove-Item Env:\QT_QPA_PLATFORM -ErrorAction SilentlyContinue
 
 # --------------------------------------------------------------------------- #
-Write-Step "6/6  zip"
+Write-Step "5/5  publish"
 # --------------------------------------------------------------------------- #
 New-Item -ItemType Directory -Force -Path $OutDir | Out-Null
-$zip = Join-Path $OutDir "MAPLEAD-$Version-win64.zip"
-if (Test-Path -LiteralPath $zip) { Remove-Item -LiteralPath $zip -Force }
-Compress-Archive -Path $Dist -DestinationPath $zip -CompressionLevel Optimal
-$sizeMb = [math]::Round((Get-Item -LiteralPath $zip).Length / 1MB, 1)
-
-# --------------------------------------------------------------------------- #
-if ($Install) {
-    Write-Step "installing"
-    & powershell.exe -NoProfile -ExecutionPolicy Bypass `
-        -File (Join-Path $Dist "install.ps1") -Source $Dist
-    if ($LASTEXITCODE -ne 0) { throw "the installer failed (exit $LASTEXITCODE)" }
-}
+$target = Join-Path $OutDir $Product
+Copy-Item -LiteralPath $Dist -Destination $target -Force
+$sizeMb = [math]::Round((Get-Item -LiteralPath $target).Length / 1MB, 1)
 
 Write-Host ""
 Write-Host "MAPLEAD $Version for Windows x64" -ForegroundColor Green
-Write-Host "  folder  : $Dist"
-Write-Host "  zip     : $zip  ($sizeMb MB)"
-Write-Host "  desktop : $Dist\MAPLEAD.exe"
-Write-Host "  wizard  : $Dist\maplead-cli.exe  (or: maplead.cmd)"
+Write-Host "  build : $Dist"
+Write-Host "  exe   : $target  ($sizeMb MB)"
 Write-Host ""
-Write-Host "To install: unpack the ZIP and run  .\install.ps1"
+Write-Host "Double-click it for the desktop app, or run it from a terminal:" -ForegroundColor DarkGray
+Write-Host "  MAPLEAD.exe --cli --demo      the terminal wizard" -ForegroundColor DarkGray
+Write-Host "  MAPLEAD.exe --doctor          host diagnostics" -ForegroundColor DarkGray
 Write-Host ""

@@ -10,7 +10,7 @@ import shutil
 
 from . import host
 
-VERSION = "1.1.1"
+VERSION = "1.1.2"
 
 # --------------------------------------------------------------------------- #
 # colour plumbing

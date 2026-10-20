@@ -154,7 +154,7 @@ def stdout_is_tty() -> bool:
 
 
 # --------------------------------------------------------------------------- #
-# frozen bundles / launching siblings
+# frozen bundles / the shared console
 # --------------------------------------------------------------------------- #
 
 def frozen() -> bool:
@@ -168,31 +168,95 @@ def executable_dir() -> str:
     return os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 
-def sibling_gui() -> str | None:
-    """Path to MAPLEAD.exe next to a frozen CLI build (Windows onedir layout)."""
-    if not frozen():
-        return None
-    base = executable_dir()
-    names = ("MAPLEAD.exe", "MAPLEAD", "maplead-gui.exe") if WINDOWS else ("MAPLEAD", "maplead-gui")
-    for name in names:
-        candidate = os.path.join(base, name)
-        if os.path.isfile(candidate):
-            return candidate
-    return None
-
-
-def spawn(path: str, args: "list[str] | None" = None) -> bool:
-    """Start another executable without waiting for it."""
+def _process_tree() -> tuple:
+    """(pid -> parent pid, pid -> exe name) for every process we can see."""
     try:
-        kwargs = {}
-        if WINDOWS:
-            # DETACHED_PROCESS: the GUI must outlive the console window it was started from
-            kwargs["creationflags"] = 0x00000008
-            kwargs["close_fds"] = True
-        subprocess.Popen([path, *(args or [])], **kwargs)  # noqa: S603 - our own binary
-        return True
-    except OSError:
-        return False
+        import ctypes
+        from ctypes import wintypes
+
+        class PROCESSENTRY32(ctypes.Structure):
+            _fields_ = [
+                ("dwSize", wintypes.DWORD),
+                ("cntUsage", wintypes.DWORD),
+                ("th32ProcessID", wintypes.DWORD),
+                ("th32DefaultHeapID", ctypes.POINTER(ctypes.c_ulong)),
+                ("th32ModuleID", wintypes.DWORD),
+                ("cntThreads", wintypes.DWORD),
+                ("th32ParentProcessID", wintypes.DWORD),
+                ("pcPriClassBase", ctypes.c_long),
+                ("dwFlags", wintypes.DWORD),
+                ("szExeFile", ctypes.c_wchar * 260),
+            ]
+
+        k32 = ctypes.WinDLL("kernel32", use_last_error=True)
+        k32.CreateToolhelp32Snapshot.restype = wintypes.HANDLE
+        snapshot = k32.CreateToolhelp32Snapshot(0x00000002, 0)   # TH32CS_SNAPPROCESS
+        if snapshot in (0, None, wintypes.HANDLE(-1).value):
+            return {}, {}
+        try:
+            entry = PROCESSENTRY32()
+            entry.dwSize = ctypes.sizeof(PROCESSENTRY32)
+            parents, names = {}, {}
+            ok = k32.Process32FirstW(snapshot, ctypes.byref(entry))
+            while ok:
+                parents[entry.th32ProcessID] = entry.th32ParentProcessID
+                names[entry.th32ProcessID] = (entry.szExeFile or "").lower()
+                ok = k32.Process32NextW(snapshot, ctypes.byref(entry))
+        finally:
+            k32.CloseHandle(snapshot)
+        return parents, names
+    except Exception:                          # pragma: no cover - best effort
+        return {}, {}
+
+
+def _ancestor_names(limit: int = 6) -> "list[str]":
+    """Exe names of our ancestors, nearest first (empty list when unsure)."""
+    parents, names = _process_tree()
+    if not parents:
+        return []
+    found = []
+    pid = parents.get(os.getpid(), 0)
+    while pid and len(found) < limit:
+        found.append(names.get(pid, ""))
+        pid = parents.get(pid, 0)
+    return found
+
+
+def quiet_console() -> None:
+    """Hide the console window when the desktop (not a shell) started us.
+
+    MAPLEAD.exe is a console-subsystem binary so that `MAPLEAD --cli` behaves
+    like a real terminal program (cmd waits for it, the wizard owns stdin).
+    The price is a console window when the same .exe is double-clicked, so the
+    GUI path hides it again - but never when a shell owns it.
+
+    A onefile build has a bootloader between us and whoever launched us
+    (explorer.exe -> MAPLEAD.exe -> us), so the self-named ancestors are
+    skipped before deciding.
+    """
+    if not WINDOWS or not frozen():
+        return
+    own = os.path.basename(sys.executable).lower()
+    owner = ""
+    for name in _ancestor_names():
+        if name == own:                        # the onefile bootloader
+            continue
+        owner = name
+        break
+    if owner not in ("", "explorer.exe"):
+        return
+    try:
+        import ctypes
+        from ctypes import wintypes
+
+        k32 = ctypes.WinDLL("kernel32", use_last_error=True)
+        user32 = ctypes.WinDLL("user32", use_last_error=True)
+        k32.GetConsoleWindow.restype = wintypes.HWND
+        window = k32.GetConsoleWindow()
+        if window:
+            user32.ShowWindow(window, 0)       # SW_HIDE
+    except Exception:                          # pragma: no cover - best effort
+        pass
 
 
 # --------------------------------------------------------------------------- #

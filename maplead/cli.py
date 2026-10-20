@@ -835,17 +835,12 @@ def main(argv: Sequence[str] | None = None) -> int:
     try:
         if args.gui:
             passthrough = ["--provider", args.provider] if args.provider else []
-            # a frozen CLI bundle has no PySide6: hand over to MAPLEAD.exe next to it
-            sibling = host.sibling_gui()
-            if sibling and host.spawn(sibling, passthrough):
-                return 0
+            # the single binary links Qt, so the window is just a function call away
             try:
                 from .gui.app import main as gui_main
             except ImportError as exc:
                 ui.error(f"the desktop app needs PySide6 ({exc}).")
                 ui.hint("pip install PySide6-Essentials   -or-   use the terminal wizard.")
-                if host.WINDOWS:
-                    ui.hint("the packaged app ships it: run MAPLEAD.exe from the same folder.")
                 return 3
             return gui_main(passthrough)
         if args.api:

@@ -4,6 +4,23 @@ All notable changes to MAPLEAD. Format follows [Keep a Changelog](https://keepac
 
 ## [Unreleased]
 
+## [1.1.2] — 2026-10-20
+
+### Changed
+- **Windows now ships one `.exe`, not a ZIP** — `MAPLEAD-<version>-windows-x64.exe`.
+  It is the desktop app and the terminal wizard in a single portable file:
+  double-click for the window, `MAPLEAD.exe --cli --demo` (or any wizard flag) for
+  the terminal. Nothing to unpack, nothing to install, no `_internal/` folder.
+- One binary, two interfaces on both platforms: the Windows `.exe` now routes to the
+  wizard exactly like the AppImage already did with `--cli`.
+- The `.exe` uses the console subsystem on purpose — cmd only waits for, and only
+  hands stdin to, console programs (a windowed build would fight cmd for the
+  keyboard). The desktop path hides that console window again, unless a shell owns it.
+
+### Removed
+- `maplead-cli.exe`, `maplead.cmd`, `install.ps1` and `uninstall.ps1`: a single
+  portable file has no folder to install or put on PATH.
+
 ## [1.1.1] — 2026-10-20
 
 ### Added
@@ -74,7 +91,8 @@ All notable changes to MAPLEAD. Format follows [Keep a Changelog](https://keepac
 - Linux x86_64 is the only packaged platform for now; the terminal wizard still runs
   anywhere Python 3.9+ does.
 
-[Unreleased]: https://github.com/DariusDev16/maplead/compare/v1.1.1...main
+[Unreleased]: https://github.com/DariusDev16/maplead/compare/v1.1.2...main
+[1.1.2]: https://github.com/DariusDev16/maplead/releases/tag/v1.1.2
 [1.1.1]: https://github.com/DariusDev16/maplead/releases/tag/v1.1.1
 [1.1.0]: https://github.com/DariusDev16/maplead/releases/tag/v1.1.0
 [1.0.0]: https://github.com/DariusDev16/maplead/releases/tag/v1.0.0

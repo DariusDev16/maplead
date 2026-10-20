@@ -20,11 +20,11 @@ New here? Read this once, then the [README](../README.md) is just a reminder.
 
 ### Linux x86_64
 
-Download `MAPLEAD-1.1.1-x86_64.AppImage`, then:
+Download `MAPLEAD-1.1.2-x86_64.AppImage`, then:
 
 ```bash
-chmod +x MAPLEAD-1.1.1-x86_64.AppImage     # first time only
-./MAPLEAD-1.1.1-x86_64.AppImage
+chmod +x MAPLEAD-1.1.2-x86_64.AppImage     # first time only
+./MAPLEAD-1.1.2-x86_64.AppImage
 ```
 
 After `./build-appimage.sh --install` you can also just type `maplead`, and the app
@@ -36,7 +36,7 @@ only things it expects from the system are a display and the usual C library.
 The same file runs the terminal wizard too — no Python needed:
 
 ```bash
-./MAPLEAD-1.1.1-x86_64.AppImage --cli --demo
+./MAPLEAD-1.1.2-x86_64.AppImage --cli --demo
 ```
 
 **No FUSE?** Older AppImages mount themselves through `libfuse.so.2`. If your system
@@ -46,25 +46,20 @@ and the cache refreshes itself when the AppImage is rebuilt.
 
 ### Windows 10/11 x64
 
-Download `MAPLEAD-1.1.1-win64.zip`, right-click → **Extract all**, then run the
-installer from the extracted folder:
+Download `MAPLEAD-1.1.2-windows-x64.exe` and double-click it. That is the whole
+app: one portable file, nothing to unpack, nothing to install, no admin rights.
+
+The same file is the terminal wizard — run it from PowerShell or cmd:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\install.ps1
+.\MAPLEAD-1.1.2-windows-x64.exe --cli             # guided wizard
+.\MAPLEAD-1.1.2-windows-x64.exe --cli --demo      # no key, no network
+.\MAPLEAD-1.1.2-windows-x64.exe --doctor          # host diagnostics
 ```
 
-No admin rights are needed. The installer copies the app to
-`%LOCALAPPDATA%\Programs\MAPLEAD`, adds a **MAPLEAD** entry to the Start Menu, makes
-`maplead` available in new terminals and registers it under *Apps & features*.
-
-| file | what it is |
-|---|---|
-| `MAPLEAD.exe` | the desktop app (no console window) |
-| `maplead-cli.exe` | the terminal wizard (`--demo`, `--api`, `--gui`, …) |
-| `uninstall.ps1` | removes shortcuts, PATH entry and the folder (keys/exports are kept) |
-
-Prefer no installation at all? Skip `install.ps1` and double-click `MAPLEAD.exe` —
-the folder is fully portable.
+Any flag the window does not know (`--demo`, `--doctor`, `-k`, …) goes straight to
+the wizard, so `--cli` is optional there. Keep the `.exe` wherever you like — a
+folder, a USB stick, the Desktop.
 
 > **SmartScreen:** the build is not code-signed, so the first launch may say
 > "Windows protected your PC". Choose **More info → Run anyway**.
@@ -169,8 +164,8 @@ The original interface, still fully supported and dependency-free:
 Without Python, the packaged builds carry the same wizard:
 
 ```bash
-./MAPLEAD-1.1.1-x86_64.AppImage --cli --demo    # Linux: the AppImage is both
-.\maplead-cli.exe --demo                        # Windows: a separate, Qt-free .exe
+./MAPLEAD-1.1.2-x86_64.AppImage --cli --demo          # Linux: the AppImage is both
+.\MAPLEAD-1.1.2-windows-x64.exe --cli --demo          # Windows: same trick, one .exe
 ```
 
 Guided mode shows long lists side by side, sized to your terminal, so the 65
@@ -210,9 +205,9 @@ Nothing is written inside the project folder or the AppImage.
 | window opens bigger than the screen | it self-corrects now; if it persists, delete `~/.local/share/maplead/` (`%LOCALAPPDATA%\maplead\` on Windows) and restart |
 | nothing happens on double-click | your file manager may not allow executing it — run it from a terminal once, or use the menu entry |
 | **Windows:** "Windows protected your PC" | the build is unsigned — **More info → Run anyway**, or build it yourself |
-| **Windows:** `maplead` is not recognized | the installer updated the PATH; open a **new** terminal (or run `%LOCALAPPDATA%\Programs\MAPLEAD\maplead.cmd`) |
+| **Windows:** `maplead` is not recognized | there is no installer and no PATH entry — run `MAPLEAD-*-windows-x64.exe` from the folder you saved it in, or add that folder to your PATH yourself |
 | **Windows:** colours look like `←[36m` | you are on an old console that cannot do ANSI — use Windows Terminal, or set `MAPLEAD_NO_COLOR=1` |
-| **Windows:** output is plain / ASCII only | expected when stdout is redirected (a pipe, `> file`, or a non-console shell) — run it in the window directly; `maplead-cli.exe --doctor` shows `console=tty` and `colour=on` when it is live |
+| **Windows:** output is plain / ASCII only | expected when stdout is redirected (a pipe, `> file`, or a non-console shell) — run it in the window directly; `MAPLEAD.exe --cli --doctor` shows `console=tty` and `colour=on` when it is live |
 | **Windows:** app is quarantined by antivirus | PyInstaller bootloaders are a common false positive — whitelist the folder or run from source (`python maplead.py --demo`) |
 
 Still stuck? Open an issue with the output of `maplead --doctor` and

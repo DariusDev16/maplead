@@ -3,11 +3,13 @@ MAPLEAD Desktop - application entry point.
 
     MAPLEAD [--args]            normal launch (MAPLEAD.exe on Windows)
     MAPLEAD --cli [args]        run the terminal wizard instead of the window
+    MAPLEAD --doctor            host diagnostics (wizard flag, routed to --cli)
     MAPLEAD --selftest          headless smoke test (builds the UI, runs a demo search)
 
-The AppImage launcher and the Windows MAPLEAD.exe call :func:`main`. Windows also
-ships a separate `maplead-cli.exe` that does not link Qt at all; the AppImage is a
-single file, so `--cli` is how the wizard is reached there.
+One binary, two interfaces: the same file is the desktop app and the terminal
+wizard. `--cli` (or any flag only the wizard knows, such as `--demo` or
+`--doctor`) runs the wizard, everything else opens the window. That is what the
+AppImage has always done, and now the Windows .exe too.
 """
 
 from __future__ import annotations
@@ -62,16 +64,40 @@ def _argv(argv: Optional[Sequence[str]]) -> List[str]:
 def _run_cli(args: List[str]) -> int:
     """`--cli` runs the terminal wizard: one binary, two interfaces.
 
-    The AppImage cannot carry a second executable next to itself, so Linux users
-    reach the wizard through `--cli` instead of installing Python. Everything
-    after the flag is handed to the wizard untouched.
+    Everything after the flag is handed to the wizard untouched. Any flag the
+    window does not recognise (``--demo``, ``--doctor``, ``-k`` …) lands here
+    too, so `MAPLEAD --demo` works without spelling out `--cli`.
     """
     from ..cli import main as cli_main
     return cli_main([a for a in args if a != "--cli"])
 
 
+def _gui_flags() -> set:
+    """Every option string the window's own parser understands."""
+    flags = {"-h", "--help", "--gui"}
+    for action in build_parser()._actions:
+        flags.update(action.option_strings)
+    return flags
+
+
+def _wants_wizard(args: List[str]) -> bool:
+    """True when the arguments can only be meant for the terminal wizard.
+
+    The window takes a few flags of its own (``--country``, ``--city`` …) to
+    pre-fill the form, so "has arguments" is not enough - anything the window
+    does not know how to parse belongs to the wizard.
+    """
+    if "--cli" in args:
+        return True
+    known = _gui_flags()
+    for arg in args:
+        if arg.startswith("-") and arg.split("=", 1)[0] not in known:
+            return True
+    return False
+
+
 def _prepare_selftest_streams(argv: Optional[Sequence[str]]) -> None:
-    """A windowed .exe has no stdout; give `--selftest` a log file instead of silence."""
+    """Give `--selftest` a log file, so the frozen run leaves a trace behind."""
     if not host.frozen() and sys.stdout is not None:
         return
     if "--selftest" not in _argv(argv):
@@ -153,12 +179,13 @@ def create_app(argv: Optional[Sequence[str]] = None):
 # --------------------------------------------------------------------------- #
 
 def main(argv: Optional[Sequence[str]] = None) -> int:
-    args = _argv(argv)
-    if "--cli" in args:
+    args = [a for a in _argv(argv) if a != "--gui"]
+    if _wants_wizard(args):
         return _run_cli(args)
-    _prepare_selftest_streams(argv)
+    host.quiet_console()                     # double-clicked .exe: hide the console
+    _prepare_selftest_streams(args)
     try:
-        return _main(argv)
+        return _main(args)
     except SystemExit:
         raise
     except BaseException:

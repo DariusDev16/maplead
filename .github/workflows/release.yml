@@ -53,7 +53,7 @@ jobs:
         run: |
           TAG="${{ github.event.inputs.tag || github.ref_name }}"
           APP="$(ls "$HOME/Apps"/MAPLEAD-*.AppImage | head -1)"
-          echo "name=MAPLEAD $TAG (x86_64)" >> "$GITHUB_OUTPUT"
+          echo "name=MAPLEAD $TAG" >> "$GITHUB_OUTPUT"
           echo "path=$APP" >> "$GITHUB_OUTPUT"
 
       - name: attach to the GitHub release
@@ -62,13 +62,15 @@ jobs:
           tag_name: ${{ github.event.inputs.tag || github.ref_name }}
           name: ${{ steps.meta.outputs.name }}
           body: |
-            Linux x86_64 AppImage and Windows x64 portable ZIP of MAPLEAD.
+            One AppImage for Linux, one portable .exe for Windows. Both are the whole
+            product: the desktop window and the terminal wizard in a single file.
 
-            **Linux**
+            **Linux x86_64**
 
             ```bash
             chmod +x MAPLEAD-*-x86_64.AppImage
-            ./MAPLEAD-*-x86_64.AppImage
+            ./MAPLEAD-*-x86_64.AppImage              # desktop app
+            ./MAPLEAD-*-x86_64.AppImage --cli --demo # terminal wizard
             ```
 
             If your system has no `libfuse.so.2`, run it with
@@ -77,14 +79,15 @@ jobs:
 
             **Windows 10/11 x64**
 
+            Download `MAPLEAD-*-windows-x64.exe` and double-click it. Nothing to unpack,
+            nothing to install. The same file is the terminal wizard:
+
             ```powershell
-            Expand-Archive MAPLEAD-*-win64.zip -DestinationPath "$env:LOCALAPPDATA\Programs"
-            cd "$env:LOCALAPPDATA\Programs\MAPLEAD"
-            powershell -ExecutionPolicy Bypass -File .\install.ps1
+            .\MAPLEAD-*-windows-x64.exe --cli --demo      # guided wizard, no key needed
+            .\MAPLEAD-*-windows-x64.exe --cli --doctor    # host diagnostics
             ```
 
-            Or skip `install.ps1` and run `MAPLEAD.exe` straight from the folder. The
-            build is unsigned, so SmartScreen asks once: *More info → Run anyway*.
+            The build is unsigned, so SmartScreen asks once: *More info → Run anyway*.
 
             The user guide covers the rest:
             https://github.com/${{ github.repository }}/blob/main/docs/GUIDE.md
@@ -108,10 +111,9 @@ jobs:
         shell: pwsh
         run: |
           $version = (Select-String -Path maplead\art.py -Pattern 'VERSION = "([^"]+)"').Matches[0].Groups[1].Value
-          $zip = Join-Path $env:USERPROFILE "Apps\MAPLEAD-$version-win64.zip"
-          if (-not (Test-Path $zip)) { throw "the build produced no ZIP" }
-          "path=$zip" >> $env:GITHUB_OUTPUT
-          "name=$version" >> $env:GITHUB_OUTPUT
+          $exe = Join-Path $env:USERPROFILE "Apps\MAPLEAD-$version-windows-x64.exe"
+          if (-not (Test-Path $exe)) { throw "the build produced no .exe" }
+          "path=$exe" >> $env:GITHUB_OUTPUT
 
       - name: attach to the GitHub release
         uses: softprops/action-gh-release@v2

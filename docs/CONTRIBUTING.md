@@ -62,7 +62,7 @@ python -m compileall -q maplead
 python maplead.py --demo --country Germany --city Berlin --business dentist `
     --fields rec --limit 40 --format xlsx --outdir "$env:TEMP\maplead-check"
 $env:QT_QPA_PLATFORM = "offscreen"; python maplead-gui.py --selftest
-.\build-windows.ps1        # build + smoke-test the portable folder
+.\build-windows.ps1        # build + smoke-test the portable .exe
 ```
 
 Both commands must print `OK`. If you touched the field catalogue, the exporters or a

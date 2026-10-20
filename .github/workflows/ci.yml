@@ -61,7 +61,7 @@ jobs:
         run: python maplead-gui.py --selftest
 
   windows:
-    name: windows (desktop + wizard)
+    name: windows (one .exe, both interfaces)
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
@@ -94,25 +94,30 @@ jobs:
           QT_QPA_PLATFORM: offscreen
         run: python maplead-gui.py --selftest
 
-      - name: build the portable folder
+      - name: build the single .exe
         run: .\build-windows.ps1 -NoTest
 
       - name: smoke-test the frozen build
         shell: pwsh
         run: |
-          .\dist\MAPLEAD\maplead.exe --demo --country Germany --city Berlin `
+          $exe = (Resolve-Path .\dist\MAPLEAD.exe).Path
+          & $exe --version
+          if ($LASTEXITCODE -ne 0) { throw "MAPLEAD.exe --version failed" }
+          & $exe --doctor
+          if ($LASTEXITCODE -ne 0) { throw "MAPLEAD.exe --doctor failed" }
+          & $exe --cli --demo --country Germany --city Berlin `
             --business dentist --fields rec --limit 20 --format csv `
             --outdir "$env:TEMP\maplead-frozen"
-          $exe = (Resolve-Path .\dist\MAPLEAD\MAPLEAD.exe).Path
+          if ($LASTEXITCODE -ne 0) { throw "the wizard inside the .exe failed" }
           $proc = Start-Process -FilePath $exe -ArgumentList "--selftest" -Wait -PassThru
           if ($proc.ExitCode -ne 0) { throw "frozen desktop self-test failed" }
 
-      - name: collect the ZIP
+      - name: collect the .exe
         shell: pwsh
-        run: Copy-Item "$env:USERPROFILE\Apps\MAPLEAD-*-win64.zip" .
+        run: Copy-Item "$env:USERPROFILE\Apps\MAPLEAD-*-windows-x64.exe" .
 
       - uses: actions/upload-artifact@v4
         with:
           name: MAPLEAD-windows
-          path: MAPLEAD-*-win64.zip
+          path: MAPLEAD-*-windows-x64.exe
           if-no-files-found: error
