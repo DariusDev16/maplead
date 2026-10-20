@@ -20,11 +20,11 @@ New here? Read this once, then the [README](../README.md) is just a reminder.
 
 ### Linux x86_64
 
-Download `MAPLEAD-1.0.0-x86_64.AppImage`, then:
+Download `MAPLEAD-1.1.0-x86_64.AppImage`, then:
 
 ```bash
-chmod +x MAPLEAD-1.0.0-x86_64.AppImage     # first time only
-./MAPLEAD-1.0.0-x86_64.AppImage
+chmod +x MAPLEAD-1.1.0-x86_64.AppImage     # first time only
+./MAPLEAD-1.1.0-x86_64.AppImage
 ```
 
 After `./build-appimage.sh --install` you can also just type `maplead`, and the app
@@ -40,7 +40,7 @@ and the cache refreshes itself when the AppImage is rebuilt.
 
 ### Windows 10/11 x64
 
-Download `MAPLEAD-1.0.0-win64.zip`, right-click → **Extract all**, then run the
+Download `MAPLEAD-1.1.0-win64.zip`, right-click → **Extract all**, then run the
 installer from the extracted folder:
 
 ```powershell

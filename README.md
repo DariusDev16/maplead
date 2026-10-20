@@ -31,8 +31,8 @@ lead-scraper API and writes them to CSV / Excel / JSON / TXT / TSV / HTML.
 **Linux x86_64, AppImage** — one file, no packages, no root:
 
 ```bash
-chmod +x MAPLEAD-1.0.0-x86_64.AppImage
-./MAPLEAD-1.0.0-x86_64.AppImage
+chmod +x MAPLEAD-1.1.0-x86_64.AppImage
+./MAPLEAD-1.1.0-x86_64.AppImage
 ```
 
 Building it yourself (also fine for arm64/other distros with a rebuild):
@@ -49,7 +49,7 @@ cd maplead
 **Windows 10/11 x64, portable ZIP** — unpack it, run the installer, done:
 
 ```powershell
-Expand-Archive MAPLEAD-1.0.0-win64.zip -DestinationPath "$env:LOCALAPPDATA\Programs"
+Expand-Archive MAPLEAD-1.1.0-win64.zip -DestinationPath "$env:LOCALAPPDATA\Programs"
 cd "$env:LOCALAPPDATA\Programs\MAPLEAD"
 powershell -ExecutionPolicy Bypass -File .\install.ps1
 ```
