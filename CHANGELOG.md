@@ -4,6 +4,8 @@ All notable changes to MAPLEAD. Format follows [Keep a Changelog](https://keepac
 
 ## [Unreleased]
 
+## [1.1.3] — 2026-10-21
+
 ### Added
 - **Skip-landline filter** — the *Skip landline phones* checkbox in the GUI and
   `--skip-landlines` in the wizard keep mobile numbers and drop the ones that look

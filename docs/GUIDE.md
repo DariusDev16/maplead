@@ -20,11 +20,11 @@ New here? Read this once, then the [README](../README.md) is just a reminder.
 
 ### Linux x86_64
 
-Download `MAPLEAD-1.1.2-x86_64.AppImage`, then:
+Download `MAPLEAD-1.1.3-x86_64.AppImage`, then:
 
 ```bash
-chmod +x MAPLEAD-1.1.2-x86_64.AppImage     # first time only
-./MAPLEAD-1.1.2-x86_64.AppImage
+chmod +x MAPLEAD-1.1.3-x86_64.AppImage     # first time only
+./MAPLEAD-1.1.3-x86_64.AppImage
 ```
 
 After `./build-appimage.sh --install` you can also just type `maplead`, and the app
@@ -36,7 +36,7 @@ only things it expects from the system are a display and the usual C library.
 The same file runs the terminal wizard too — no Python needed:
 
 ```bash
-./MAPLEAD-1.1.2-x86_64.AppImage --cli --demo
+./MAPLEAD-1.1.3-x86_64.AppImage --cli --demo
 ```
 
 **No FUSE?** Older AppImages mount themselves through `libfuse.so.2`. If your system
@@ -46,15 +46,15 @@ and the cache refreshes itself when the AppImage is rebuilt.
 
 ### Windows 10/11 x64
 
-Download `MAPLEAD-1.1.2-windows-x64.exe` and double-click it. That is the whole
+Download `MAPLEAD-1.1.3-windows-x64.exe` and double-click it. That is the whole
 app: one portable file, nothing to unpack, nothing to install, no admin rights.
 
 The same file is the terminal wizard — run it from PowerShell or cmd:
 
 ```powershell
-.\MAPLEAD-1.1.2-windows-x64.exe --cli             # guided wizard
-.\MAPLEAD-1.1.2-windows-x64.exe --cli --demo      # no key, no network
-.\MAPLEAD-1.1.2-windows-x64.exe --doctor          # host diagnostics
+.\MAPLEAD-1.1.3-windows-x64.exe --cli             # guided wizard
+.\MAPLEAD-1.1.3-windows-x64.exe --cli --demo      # no key, no network
+.\MAPLEAD-1.1.3-windows-x64.exe --doctor          # host diagnostics
 ```
 
 Any flag the window does not know (`--demo`, `--doctor`, `-k`, …) goes straight to
@@ -169,8 +169,8 @@ The original interface, still fully supported and dependency-free:
 Without Python, the packaged builds carry the same wizard:
 
 ```bash
-./MAPLEAD-1.1.2-x86_64.AppImage --cli --demo          # Linux: the AppImage is both
-.\MAPLEAD-1.1.2-windows-x64.exe --cli --demo          # Windows: same trick, one .exe
+./MAPLEAD-1.1.3-x86_64.AppImage --cli --demo          # Linux: the AppImage is both
+.\MAPLEAD-1.1.3-windows-x64.exe --cli --demo          # Windows: same trick, one .exe
 ```
 
 Guided mode shows long lists side by side, sized to your terminal, so the 65

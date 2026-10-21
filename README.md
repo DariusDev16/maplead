@@ -31,8 +31,8 @@ lead-scraper API and writes them to CSV / Excel / JSON / TXT / TSV / HTML.
 **Linux x86_64, AppImage** — one file, no packages, no root:
 
 ```bash
-chmod +x MAPLEAD-1.1.2-x86_64.AppImage
-./MAPLEAD-1.1.2-x86_64.AppImage
+chmod +x MAPLEAD-1.1.3-x86_64.AppImage
+./MAPLEAD-1.1.3-x86_64.AppImage
 ```
 
 Building it yourself (also fine for arm64/other distros with a rebuild):
@@ -49,16 +49,16 @@ cd maplead
 **Windows 10/11 x64, one .exe** — download it and double-click:
 
 ```powershell
-.\MAPLEAD-1.1.2-windows-x64.exe
+.\MAPLEAD-1.1.3-windows-x64.exe
 ```
 
 Nothing to unpack and nothing to install: the file is the whole app. It is also
 the terminal wizard, with exactly the same flags as `maplead.py`:
 
 ```powershell
-.\MAPLEAD-1.1.2-windows-x64.exe --cli            # guided wizard
-.\MAPLEAD-1.1.2-windows-x64.exe --cli --demo     # no key, no network
-.\MAPLEAD-1.1.2-windows-x64.exe --doctor         # host diagnostics
+.\MAPLEAD-1.1.3-windows-x64.exe --cli            # guided wizard
+.\MAPLEAD-1.1.3-windows-x64.exe --cli --demo     # no key, no network
+.\MAPLEAD-1.1.3-windows-x64.exe --doctor         # host diagnostics
 ```
 
 SmartScreen may warn on first launch because the build is unsigned:
@@ -162,9 +162,9 @@ On Linux the wizard is inside the AppImage — the same file as the desktop app,
 nothing has to be installed first either:
 
 ```bash
-./MAPLEAD-1.1.2-x86_64.AppImage --cli --demo
-./MAPLEAD-1.1.2-x86_64.AppImage --cli --country DE --city Berlin --business dentist
-./MAPLEAD-1.1.2-x86_64.AppImage --cli --doctor
+./MAPLEAD-1.1.3-x86_64.AppImage --cli --demo
+./MAPLEAD-1.1.3-x86_64.AppImage --cli --country DE --city Berlin --business dentist
+./MAPLEAD-1.1.3-x86_64.AppImage --cli --doctor
 ```
 
 You can add `~/.local/bin/maplead-cli` yourself (`#!/bin/sh` + `exec "$HOME/Apps"/MAPLEAD-*-x86_64.AppImage --cli "$@"`)
