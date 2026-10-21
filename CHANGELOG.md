@@ -4,6 +4,15 @@ All notable changes to MAPLEAD. Format follows [Keep a Changelog](https://keepac
 
 ## [Unreleased]
 
+### Added
+- **Skip-landline filter** — the *Skip landline phones* checkbox in the GUI and
+  `--skip-landlines` in the wizard keep mobile numbers and drop the ones that look
+  like landlines. Numbers are classified per country by their prefixes
+  (BR, PT, ES, GB, DE, FR, IT, NL, IE, AU, CO, PE, CL); where mobile and landline share
+  the same format (US, Canada…) nothing is dropped instead of guessing.
+- The offline demo provider now generates plausible mobile **and** landline numbers for
+  those countries, so the new filter can be tried without an API key.
+
 ## [1.1.2] — 2026-10-20
 
 ### Changed

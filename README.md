@@ -140,7 +140,7 @@ Same engine, zero dependencies, Python 3.9+:
 | `--fields` | `name,phone,rating` · `rec` · `basic` · `sales` · `all` |
 | `--limit` `--format` `--out` `--outdir` | volume and destination |
 | `--min-rating` `--min-reviews` | quality filters |
-| `--require-phone` `--require-website` `--skip-closed` | hard filters |
+| `--require-phone` `--skip-landlines` `--require-website` `--skip-closed` | hard filters (`--skip-landlines` keeps mobiles only) |
 | `--enrich` | Outscraper contact enrichment (costs credits) |
 | `--gui` | launch the desktop app |
 | `--cli` | run the wizard from the desktop binary (both platforms — no Python needed) |

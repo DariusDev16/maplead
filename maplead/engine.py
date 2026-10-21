@@ -147,12 +147,104 @@ def dedupe(leads: Sequence[Dict[str, Any]]) -> Tuple[List[Dict[str, Any]], int]:
     return list(seen.values()), dupes
 
 
+# --------------------------------------------------------------------------- #
+# phone types (mobile vs landline)
+# --------------------------------------------------------------------------- #
+
+# Dial code -> ISO, so a number can be classified even when only the dial is
+# known (the plan always carries the ISO, the demo/imported rows may not).
+_DIAL_ISO = {
+    "55": "br", "351": "pt", "34": "es", "44": "gb", "49": "de", "33": "fr",
+    "39": "it", "31": "nl", "353": "ie", "61": "au", "57": "co", "51": "pe",
+    "56": "cl",
+}
+_ISO_DIAL = {iso: dial for dial, iso in _DIAL_ISO.items()}
+
+# Countries whose national numbers start with a trunk "0" that the rules skip.
+_TRUNK_ZERO = {"gb", "de", "fr", "nl", "ie", "au"}
+
+# iso -> (mobile regex, landline regex) over the national number. Countries
+# where the two formats cannot be told apart (US, Canada, Mexico…) are absent
+# on purpose: guessing there would throw away perfectly good mobiles.
+_PHONE_RULES = {
+    "br": (r"[1-9]{2}9\d{8}", r"[1-9]{2}[2-5]\d{7}"),
+    "pt": (r"9\d{8}", r"2\d{8}"),
+    "es": (r"[67]\d{8}", r"9\d{8}"),
+    "gb": (r"7\d{9}", r"[123]\d{8,9}"),
+    "de": (r"1[567]\d{8,9}", r"[2-9]\d{5,11}"),
+    "fr": (r"[67]\d{8}", r"[1-59]\d{8}"),
+    "it": (r"3\d{8,9}", r"0\d{6,10}"),
+    "nl": (r"6\d{8}", r"[1-57]\d{8}"),
+    "ie": (r"8[356789]\d{7}", r"[1245679]\d{6,8}"),
+    "au": (r"4\d{8}", r"[2378]\d{8}"),
+    "co": (r"3\d{9}", r"[1-8]\d{6,9}"),
+    "pe": (r"9\d{8}", r"0\d{6,8}"),
+    "cl": (r"9\d{8}", r"[2-8]\d{7,8}"),
+}
+
+
+def _match_phone_rule(iso: str, number: str) -> str:
+    mobile, landline = _PHONE_RULES[iso]
+    if iso in _TRUNK_ZERO and number.startswith("0"):
+        number = number[1:]
+    if re.fullmatch(mobile, number):
+        return "mobile"
+    if re.fullmatch(landline, number):
+        return "landline"
+    return "unknown"
+
+
+def phone_type(phone: str, country_code: str = "", dial: str = "") -> str:
+    """Classify a phone number as ``mobile``, ``landline`` or ``unknown``.
+
+    Google returns national numbers, so the rules are per country and purely
+    prefix based: a Brazilian mobile has 9 digits after the area code, a German
+    one starts 015/016/017, a French one 06/07, and so on. Numbers from
+    countries without a separate mobile range stay ``unknown`` rather than
+    being guessed as landlines.
+    """
+    digits = re.sub(r"\D+", "", phone or "")
+    if not digits:
+        return "unknown"
+
+    iso = (country_code or "").strip().lower()
+    country_dial = re.sub(r"\D+", "", dial or "")
+    international = (phone or "").strip().startswith("+")
+    if international and not country_dial:
+        # "+55 11 91234-5678" carries its own country code
+        for code in sorted(_DIAL_ISO, key=len, reverse=True):
+            if digits.startswith(code):
+                country_dial = code
+                break
+    if not iso:
+        for code in sorted(_DIAL_ISO, key=len, reverse=True):
+            if country_dial.startswith(code):
+                iso = _DIAL_ISO[code]
+                break
+    if iso not in _PHONE_RULES:
+        return "unknown"
+
+    country_dial = country_dial or _ISO_DIAL.get(iso, "")
+    if international and country_dial and digits.startswith(country_dial):
+        digits = digits[len(country_dial):]
+
+    kind = _match_phone_rule(iso, digits)
+    if kind == "unknown" and not international and country_dial:
+        # national number sent with the country code glued on ("5511912345678")
+        rest = digits[len(country_dial):]
+        if digits.startswith(country_dial) and len(rest) >= 8:
+            kind = _match_phone_rule(iso, rest)
+    return kind
+
+
 def apply_filters(leads: Sequence[Dict[str, Any]], min_rating: float | None = None,
                   min_reviews: int | None = None, require_phone: bool = False,
                   require_website: bool = False,
-                  skip_closed: bool = False) -> Tuple[List[Dict[str, Any]], Dict[str, int]]:
+                  skip_closed: bool = False, skip_landlines: bool = False,
+                  country_code: str = "",
+                  dial: str = "") -> Tuple[List[Dict[str, Any]], Dict[str, int]]:
     stats = {"min_rating": 0, "min_reviews": 0, "require_phone": 0,
-             "require_website": 0, "skip_closed": 0}
+             "require_website": 0, "skip_closed": 0, "skip_landlines": 0}
     out = []
     for lead in leads:
         if min_rating is not None:
@@ -168,6 +260,11 @@ def apply_filters(leads: Sequence[Dict[str, Any]], min_rating: float | None = No
         if require_phone and not lead.get("phone"):
             stats["require_phone"] += 1
             continue
+        if skip_landlines:
+            phone = str(lead.get("phone") or "")
+            if not phone or phone_type(phone, country_code, dial) == "landline":
+                stats["skip_landlines"] += 1
+                continue
         if require_website and not lead.get("website"):
             stats["require_website"] += 1
             continue
@@ -200,6 +297,7 @@ class SearchPlan:
     require_phone: bool = False
     require_website: bool = False
     skip_closed: bool = False
+    skip_landlines: bool = False
     enrich: bool = False
     districts: List[str] = field(default_factory=list)
 
@@ -270,7 +368,8 @@ def harvest(plan: SearchPlan,
         report.unique_count = len(unique)
         filtered, last_stats = apply_filters(
             unique, plan.min_rating, plan.min_reviews,
-            plan.require_phone, plan.require_website, plan.skip_closed)
+            plan.require_phone, plan.require_website, plan.skip_closed,
+            plan.skip_landlines, plan.country_code, plan.dial)
 
     for i, query in enumerate(queries, 1):
         if should_stop and should_stop():

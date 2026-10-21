@@ -67,6 +67,9 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--min-rating", type=float, help="drop leads rated below this")
     p.add_argument("--min-reviews", type=int, help="drop leads with fewer reviews")
     p.add_argument("--require-phone", action="store_true", help="only keep leads with a phone")
+    p.add_argument("--skip-landlines", action="store_true",
+                   help="drop landline numbers, keep mobiles (numbers that cannot "
+                        "be classified, e.g. US, are kept)")
     p.add_argument("--require-website", action="store_true", help="only keep leads with a website")
     p.add_argument("--skip-closed", action="store_true", help="drop permanently closed places")
     p.add_argument("--enrich", action="store_true",
@@ -494,8 +497,13 @@ def run_wizard(args: argparse.Namespace) -> int:
     if not auto:
         args.require_phone = args.require_phone or ui.ask_yesno(
             "Only keep leads that have a phone number?", False)
+        args.skip_landlines = args.skip_landlines or ui.ask_yesno(
+            "Skip landlines (keep mobile numbers)?", False)
         args.require_website = args.require_website or ui.ask_yesno(
             "Only keep leads that have a website?", False)
+
+    if args.skip_landlines:            # a phone type filter implies a phone
+        args.require_phone = True
 
     # ---- 8/9 format ------------------------------------------------------
     ui.step(8, STEP_TOTAL, "output format")
@@ -513,6 +521,7 @@ def run_wizard(args: argparse.Namespace) -> int:
         min_rating=args.min_rating, min_reviews=args.min_reviews,
         require_phone=args.require_phone, require_website=args.require_website,
         skip_closed=args.skip_closed, enrich=args.enrich,
+        skip_landlines=args.skip_landlines,
     )
     ui.out()
     ui.out(ui.panel("search plan", [

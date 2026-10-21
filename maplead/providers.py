@@ -677,6 +677,41 @@ _SUFFIX = ["Point", "Center", "House", "Studio", "Group", "Works", "Lab", "Hub",
 _TAGS = ["24/7", "Family", "Express", "Premium", "Eco", "Pro", "Certified", "Fast",
          "Deluxe", "Local"]
 
+# iso -> (mobile, landline) national number formats; '#' becomes a random
+# digit and '%' a non-zero digit. Realistic prefixes keep the "skip landlines"
+# filter meaningful in demo mode (without them every synthetic number looks
+# like a landline).
+_PHONE_FORMATS = {
+    "br": ("%% 9####-####", "%% 3###-####"),
+    "pt": ("9## ### ###", "2## ### ###"),
+    "es": ("6## ### ###", "9## ### ###"),
+    "gb": ("07### ######", "020 #### ####"),
+    "de": ("0151 #######", "030 #######"),
+    "fr": ("06 ## ## ## ##", "01 ## ## ## ##"),
+    "it": ("3## ### ####", "02 #### ####"),
+    "nl": ("06 #### ####", "020 ### ####"),
+    "ie": ("08# ### ####", "01 ### ####"),
+    "au": ("04## ### ###", "02 #### ####"),
+    "co": ("3## ### ####", "601 #######"),
+    "pe": ("9## ### ###", "01 #######"),
+    "cl": ("9 #### ####", "2 #### ####"),
+}
+
+
+def _demo_phone(rng: random.Random, iso: str, dial: str) -> str:
+    """Synthetic but plausible national number (70% mobile, 30% landline)."""
+    formats = _PHONE_FORMATS.get((iso or "").lower())
+    if not formats:
+        return (f"{dial} {rng.randint(20, 99)} {rng.randint(100, 999)} "
+                f"{rng.randint(1000, 9999)}")
+    pattern = formats[0] if rng.random() < 0.7 else formats[1]
+    local = "".join(
+        str(rng.randint(0, 9)) if ch == "#"
+        else str(rng.randint(1, 9)) if ch == "%"
+        else ch
+        for ch in pattern)
+    return f"{dial} {local}"
+
 
 class DemoProvider(Provider):
     """Deterministic synthetic leads so the CLI runs (and demos) with no API key."""
@@ -741,7 +776,7 @@ class DemoProvider(Provider):
                 "country_code": req.location.get("country_code", ""),
                 "latitude": lat,
                 "longitude": lon,
-                "phone": f"{phone_cc} {rng.randint(20, 99)} {rng.randint(100, 999)} {rng.randint(1000, 9999)}",
+                "phone": _demo_phone(rng, req.location.get("country_code", ""), phone_cc),
                 "website": f"https://www.{slug.replace(' ', '')}{rng.randint(1, 99)}.example.com",
                 "email": f"hello@{slug.replace(' ', '')}{rng.randint(1, 99)}.example.com",
                 "whatsapp": f"{phone_cc.replace('+', '')}{rng.randint(30, 99)}{rng.randint(10000000, 99999999)}",

@@ -100,15 +100,20 @@ environment variables always win over that file, so exporting
 | 2-4 | **Where** | country (65, type to filter) → region (with completion) → city (1044 catalogued, type anything) |
 | 5 | **What business** | 68 verticals with the phrases they are actually searched as, or free text |
 | 6 | **Fields** | 35 fields, grouped and searchable, with `rec` / `basic` / `sales` / `all` presets |
-| 7 | **How many + filters** | target volume, min rating, min reviews, phone/website required, skip closed, enrichment |
+| 7 | **How many + filters** | target volume, min rating, min reviews, phone/website required, skip landlines, skip closed, enrichment |
 | 8 | **Export** | csv · xlsx · json · txt · tsv · html, plus the destination path |
 
-Two things worth knowing:
+Three things worth knowing:
 
 - **Pick the region and the city list narrows to it.** Leave the region empty to
   search the whole country.
 - **Fields your provider cannot return are locked**, with the reason shown
   (`· Outscraper`, `· Google Places`…). E-mail and social profiles need Outscraper.
+- **Skip landline phones** keeps mobile numbers only: Brazilian 9-digit mobiles,
+  Portuguese/Spanish/French/Italian/Dutch/Irish numbers, German 015/016/017, UK and
+  Australian mobiles, and Colombian/Peruvian/Chilean mobiles are recognised by their
+  prefixes. Where mobile and landline share the same format (US, Canada…) nothing is
+  dropped, because the number alone cannot tell them apart.
 
 ## 5 · Running a search
 

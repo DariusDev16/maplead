@@ -40,6 +40,7 @@ class SearchSpec:
     require_phone: bool = False
     require_website: bool = False
     skip_closed: bool = False
+    skip_landlines: bool = False
     enrich: bool = False
     fmt: str = "csv"
     outpath: str = ""
@@ -80,6 +81,7 @@ def build_plan(spec: SearchSpec) -> engine.SearchPlan:
         require_phone=spec.require_phone,
         require_website=spec.require_website,
         skip_closed=spec.skip_closed,
+        skip_landlines=spec.skip_landlines,
         enrich=spec.enrich,
     )
 

@@ -266,6 +266,7 @@ def selftest(window) -> int:
     window.business_combo.setCurrentText("Plumber")
     window.limit_spin.setValue(25)
     window.cb_phone.setChecked(True)
+    window.cb_landline.setChecked(True)     # must drop the demo landlines below
     idx = window.format_combo.findData("xlsx")
     if idx >= 0:
         window.format_combo.setCurrentIndex(idx)
@@ -307,10 +308,17 @@ def selftest(window) -> int:
           f"{result.stats['with_phone']} phones, "
           f"{result.stats['with_website']} sites")
 
+    from ..engine import phone_type
+    landlines = [l for l in result.leads
+                 if phone_type(l.get("phone", ""), "de", "+49") == "landline"]
+    print(f"[selftest] filters    : {result.report.filtered or 'none'}, "
+          f"landlines in the result: {len(landlines)}")
+
     ok = (len(result.leads) > 0
           and result.exported
           and os.path.exists(result.outpath)
-          and window.model.rowCount() == len(result.leads))
+          and window.model.rowCount() == len(result.leads)
+          and not landlines)
     if not ok:
         print("[selftest] FAILED: inconsistent results")
         return 1
@@ -321,10 +329,20 @@ def selftest(window) -> int:
 def _selftest_widgets(window) -> bool:
     """Exercise the dialogs and list widgets headlessly."""
     from ..data import fields as FD
+    from ..engine import phone_type
     from .keys import KeysDialog
     from .widgets import FieldPickerDialog, SearchCombo
 
     ok = True
+
+    # --- phone classifier (mobile / landline filter) ----------------------- #
+    samples = [("+55 11 91234-5678", "br", "+55", "mobile"),
+               ("+55 11 3456-7890", "br", "+55", "landline"),
+               ("+49 0151 2345678", "de", "+49", "mobile"),
+               ("+1 512 555 0100", "us", "+1", "unknown")]
+    kinds = [phone_type(p, iso, dial) for p, iso, dial, _ in samples]
+    print(f"[selftest] phone types: {list(zip([s[0] for s in samples], kinds))}")
+    ok &= kinds == [want for *_, want in samples]
 
     # --- searchable combo (country picker) -------------------------------- #
     combo: SearchCombo = window.country_combo

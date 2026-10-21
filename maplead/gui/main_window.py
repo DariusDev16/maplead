@@ -279,10 +279,18 @@ class MainWindow(QMainWindow):
         vl.addLayout(grid)
 
         self.cb_phone = QCheckBox("Only leads with a phone")
+        self.cb_landline = QCheckBox("Skip landline phones")
+        self.cb_landline.setToolTip(
+            "Drops numbers that look like landlines (Brazil, Portugal, Spain, UK,\n"
+            "Germany, France, Italy, Netherlands, Ireland, Australia, Colombia,\n"
+            "Peru, Chile). Numbers from countries where mobile and landline share\n"
+            "the same format (US, Canada…) cannot be told apart and are kept.")
+        self.cb_landline.toggled.connect(self._on_landline_toggled)
         self.cb_site = QCheckBox("Only leads with a website")
         self.cb_closed = QCheckBox("Skip permanently closed")
         self.cb_enrich = QCheckBox("Enrich contacts (Outscraper, extra credits)")
-        for box in (self.cb_phone, self.cb_site, self.cb_closed, self.cb_enrich):
+        for box in (self.cb_phone, self.cb_landline, self.cb_site, self.cb_closed,
+                    self.cb_enrich):
             box.toggled.connect(self._sync_run_button)
             vl.addWidget(box)
         outer.addWidget(vol_card)
@@ -571,6 +579,12 @@ class MainWindow(QMainWindow):
             open_in_desktop(paths.default_export_dir())
 
     # -- plan preview --------------------------------------------------------
+    def _on_landline_toggled(self, checked: bool) -> None:
+        """A landline filter only makes sense when a phone is required."""
+        if checked and not self.cb_phone.isChecked():
+            self.cb_phone.setChecked(True)
+        self._sync_run_button()
+
     def spec(self) -> SearchSpec:
         country = self.country_combo.value()
         text = self.business_combo.currentText().strip()
@@ -597,6 +611,7 @@ class MainWindow(QMainWindow):
             require_phone=self.cb_phone.isChecked(),
             require_website=self.cb_site.isChecked(),
             skip_closed=self.cb_closed.isChecked(),
+            skip_landlines=self.cb_landline.isChecked(),
             enrich=self.cb_enrich.isChecked(),
             fmt=fmt,
             outpath=self.out_edit.text() or self._suggest_path(),
@@ -706,8 +721,8 @@ class MainWindow(QMainWindow):
         for widget in (self.provider_combo, self.country_combo, self.region_combo,
                        self.city_combo, self.business_combo, self.fields_btn,
                        self.limit_spin, self.min_rating, self.min_reviews,
-                       self.cb_phone, self.cb_site, self.cb_closed, self.cb_enrich,
-                       self.format_combo):
+                       self.cb_phone, self.cb_landline, self.cb_site, self.cb_closed,
+                       self.cb_enrich, self.format_combo):
             widget.setEnabled(enabled)
         # keys + theme stay usable mid-run: neither can corrupt a harvest
         self.act_run.setEnabled(not enabled and not self._problems())
@@ -985,6 +1000,7 @@ class MainWindow(QMainWindow):
             self.min_rating.setValue(float(data.get("min_rating", 0) or 0))
             self.min_reviews.setValue(int(data.get("min_reviews", 0) or 0))
             self.cb_phone.setChecked(bool(data.get("require_phone")))
+            self.cb_landline.setChecked(bool(data.get("skip_landlines")))
             self.cb_site.setChecked(bool(data.get("require_website")))
             self.cb_closed.setChecked(bool(data.get("skip_closed")))
             self.cb_enrich.setChecked(bool(data.get("enrich")))
@@ -1020,6 +1036,7 @@ class MainWindow(QMainWindow):
             "require_phone": spec.require_phone,
             "require_website": spec.require_website,
             "skip_closed": spec.skip_closed,
+            "skip_landlines": spec.skip_landlines,
             "enrich": spec.enrich,
             "format": spec.fmt,
             "outpath": self.out_edit.text() if self._manual_path else "",
