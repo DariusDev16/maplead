@@ -137,7 +137,7 @@ def main() -> int:
         _mask_keys()
         win._refresh_provider_status()
         win._on_provider_changed()
-        win.status_right.setText("~/Documents/maplead/veterinary-clinic-cascais.csv")
+        win.status_right.setText("results ready — not exported yet")
         shoot(win, "app-dark.png", (WIN_W, WIN_H))
 
         # ------------------------------------------------------- light theme
@@ -146,7 +146,7 @@ def main() -> int:
         light._on_finished(result)
         light._refresh_provider_status()
         light._on_provider_changed()
-        light.status_right.setText("~/Documents/maplead/veterinary-clinic-cascais.csv")
+        light.status_right.setText("results ready — not exported yet")
         shoot(light, "app-light.png", (WIN_W, WIN_H))
         theme_mod.apply_theme(qapp, theme_mod.PALETTES["dark"])
 

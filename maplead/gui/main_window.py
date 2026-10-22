@@ -20,7 +20,7 @@ from PySide6.QtWidgets import (QCheckBox, QComboBox, QDialog, QDoubleSpinBox,
                                QSpinBox, QSplitter, QToolButton, QVBoxLayout,
                                QWidget)
 
-from .. import exporters, paths
+from .. import contacts, exporters, paths
 from ..art import VERSION
 from ..data import cities as CI
 from ..data import countries as CO
@@ -29,6 +29,7 @@ from ..data import verticals as VT
 from ..providers import ORDER, PROVIDERS
 from . import icons
 from .keys import KeysDialog
+from .lead_panel import LeadsPanel, load_message_template
 from .theme import Palette
 from .widgets import (FieldPickerDialog, LeadsFilter, LeadsModel, LogPane,
                       SearchCombo, StatCard, build_table, card, editable_combo,
@@ -67,6 +68,9 @@ class MainWindow(QMainWindow):
         self._fields: List[str] = [f for f in FD.RECOMMENDED]
         self._last_outpath: str = ""
         self._manual_path = False
+        self._run_spec: Optional[SearchSpec] = None
+        self._last_result: Optional[RunResult] = None
+        self._panel: Optional[LeadsPanel] = None
 
         self._build()
         self._restore_state()
@@ -296,7 +300,12 @@ class MainWindow(QMainWindow):
         outer.addWidget(vol_card)
 
         # ---- 8 output ------------------------------------------------------- #
-        out_card, ol = card("8 · export")
+        out_card, ol = card("8 · export options")
+        export_hint = QLabel("Choose the format and file name here. The file is "
+                             "only written when you press Export.")
+        export_hint.setObjectName("hint")
+        export_hint.setWordWrap(True)
+        ol.addWidget(export_hint)
         self.format_combo = QComboBox()
         for fmt, label, desc in exporters.FORMATS:
             self.format_combo.addItem(f"{label}  ·  .{fmt}", fmt)
@@ -397,6 +406,24 @@ class MainWindow(QMainWindow):
         self.filter_edit.setFixedWidth(220)
         self.filter_edit.textChanged.connect(self.proxy.setNeedle)
         head.addWidget(self.filter_edit)
+        self.panel_btn = QPushButton("  Leads panel")
+        self.panel_btn.setIcon(icons.icon("table", self.p.text_dim, 14))
+        self.panel_btn.setToolTip(
+            "Read the leads as cards — links open with one click and every phone "
+            "number gets a WhatsApp button (Ctrl+P)")
+        self.panel_btn.setEnabled(False)
+        self.panel_btn.clicked.connect(self.open_panel)
+        head.addWidget(self.panel_btn)
+        self.export_btn = QPushButton("  Export")
+        self.export_btn.setIcon(icons.icon("download", self.p.accent_text, 14))
+        self.export_btn.setProperty("accent", True)
+        self.export_btn.setToolTip(
+            "Write the leads to the format and folder chosen in 8 · export options. "
+            "Nothing is written until you click this.")
+        self.export_btn.setEnabled(False)
+        # clicked(bool) would arrive as the optional path argument: drop it
+        self.export_btn.clicked.connect(lambda: self.export_results())
+        head.addWidget(self.export_btn)
         copy_btn = QPushButton("  Copy selection")
         copy_btn.setIcon(icons.icon("copy", self.p.text_dim, 14))
         copy_btn.clicked.connect(self.copy_selection)
@@ -563,6 +590,62 @@ class MainWindow(QMainWindow):
             self.out_edit.setText(chosen)
             self._manual_path = True
 
+    def export_results(self, path: Optional[str] = None) -> bool:
+        """Write the current result now; nothing is exported automatically.
+
+        With no `path`, ask for one first. The selftest passes a temporary path
+        so it can exercise the same writer without opening a dialog.
+        """
+        # A Qt clicked(bool) signal can land here as the first argument.
+        if not isinstance(path, (str, os.PathLike)):
+            path = None
+
+        result = self._last_result
+        if result is None or not result.leads:
+            QMessageBox.information(
+                self, "Export",
+                "Run a search first — there are no leads to export yet.")
+            return False
+
+        fmt = self.format_combo.currentData() or "csv"
+        chosen = os.fspath(path) if path is not None else None
+        if chosen is None:
+            current = self.out_edit.text() or self._suggest_path()
+            start_dir = os.path.dirname(current) or paths.default_export_dir()
+            paths.ensure_dir(start_dir)
+            chosen, _ = QFileDialog.getSaveFileName(
+                self, "Export leads to", current,
+                f"{exporters.LABEL[fmt]} (*.{fmt});;All files (*)")
+            if not chosen:
+                return False
+            # This is the name for *this* export. Leave the path automatic so
+            # the next search gets a fresh name from its city/business.
+
+        if not chosen.lower().endswith(f".{fmt}"):
+            chosen += f".{fmt}"
+        self.out_edit.setText(chosen)
+
+        try:
+            paths.ensure_dir(os.path.dirname(os.path.abspath(chosen)) or ".")
+            info = exporters.write(fmt, chosen, result.leads, result.columns,
+                                   result.meta)
+        except Exception as exc:          # keep the window alive on a bad path
+            message = f"Could not write {chosen}: {exc}"
+            self.log.write(message, "error")
+            QMessageBox.critical(self, "Could not export results", message)
+            return False
+
+        result.outpath = chosen
+        result.fmt = fmt
+        result.exported = True
+        self._last_outpath = chosen
+        self.status_right.setText(chosen)
+        self.log.write(
+            f"Exported {info['rows']} rows × {info['columns']} columns → {chosen}",
+            "ok")
+        self._sync_export_button()
+        return True
+
     def _suggest_path(self) -> str:
         fmt = self.format_combo.currentData() or "csv"
         country = self.country_combo.value()
@@ -577,6 +660,80 @@ class MainWindow(QMainWindow):
             open_in_desktop(self._last_outpath)
         else:
             open_in_desktop(paths.default_export_dir())
+
+    # -- leads panel ---------------------------------------------------------
+    def _panel_context(self) -> tuple:
+        spec = self._run_spec
+        if spec and spec.country:
+            return spec.country.dial, spec.country.iso
+        return "", ""
+
+    def _panel_subtitle(self) -> str:
+        result = self._last_result
+        spec = self._run_spec
+        if result is None:
+            return ""
+        bits: List[str] = []
+        if spec:
+            if spec.business_label:
+                bits.append(spec.business_label)
+            where = ", ".join(
+                part for part in (spec.city, spec.region,
+                                  spec.country.name if spec.country else "") if part)
+            if where:
+                bits.append(where)
+            if spec.provider_name in PROVIDERS:
+                bits.append(PROVIDERS[spec.provider_name].label)
+        bits.append(f"{len(result.leads)} leads")
+        return "  ·  ".join(bits)
+
+    def _sync_panel_button(self) -> None:
+        ready = bool(self._last_result and self._last_result.leads)
+        self.panel_btn.setEnabled(ready)
+        self.act_panel.setEnabled(ready)
+
+    def _sync_export_button(self) -> None:
+        ready = bool(self._last_result and self._last_result.leads)
+        self.export_btn.setEnabled(ready)
+        self.act_export.setEnabled(ready)
+
+    def open_panel(self) -> None:
+        result = self._last_result
+        if result is None or not result.leads:
+            QMessageBox.information(
+                self, "Leads panel",
+                "Run a search first — the panel shows the leads it found.")
+            return
+        dial, iso = self._panel_context()
+        if self._panel is None:
+            self._panel = LeadsPanel(
+                result.leads, result.columns, self.p,
+                dial=dial, country_code=iso,
+                subtitle=self._panel_subtitle(), parent=self)
+        else:
+            self._panel.set_leads(result.leads, result.columns)
+            self._panel.set_context(dial, iso)
+            self._panel.sub_label.setText(self._panel_subtitle())
+        self._panel.show()
+        self._panel.raise_()
+        self._panel.activateWindow()
+
+    def message_lead(self, lead: Dict[str, Any]) -> None:
+        """Table context-menu shortcut: open this lead's WhatsApp chat."""
+        dial, iso = self._panel_context()
+        message = contacts.render_template(load_message_template(), lead)
+        url = contacts.whatsapp_url_for(lead, message, dial=dial, iso=iso)
+        if not url:
+            QMessageBox.information(
+                self, "WhatsApp",
+                "This lead has no phone number that can be opened in WhatsApp.")
+            return
+        if open_in_desktop(url):
+            self.log.write(f"WhatsApp opened for {lead.get('name') or 'lead'} "
+                           f"with the saved message.", "ok")
+        else:
+            self.log.write("Could not open WhatsApp — is a browser configured?",
+                           "warn")
 
     # -- plan preview --------------------------------------------------------
     def _on_landline_toggled(self, checked: bool) -> None:
@@ -614,7 +771,8 @@ class MainWindow(QMainWindow):
             skip_landlines=self.cb_landline.isChecked(),
             enrich=self.cb_enrich.isChecked(),
             fmt=fmt,
-            outpath=self.out_edit.text() or self._suggest_path(),
+            outpath=(self.out_edit.text() if self._manual_path
+                     else self._suggest_path()),
             outdir=paths.default_export_dir(),
         )
 
@@ -677,6 +835,13 @@ class MainWindow(QMainWindow):
 
     def start(self) -> None:
         spec = self.spec()
+        self._run_spec = spec
+        self._last_result = None
+        # Keep an open panel where it is: it refreshes when this run finishes,
+        # so the user can keep reading the previous result while it works.
+        self._sync_panel_button()
+        self._sync_export_button()
+        self.status_right.setText("searching — nothing exported yet")
         self.out_edit.setText(spec.outpath)
         self.model.clear()
         self.proxy.setNeedle("")
@@ -761,14 +926,26 @@ class MainWindow(QMainWindow):
             f"{stats['total']} rows · {self.proxy.rowCount()} shown"
             if stats["total"] else "no leads matched — try a bigger limit or a "
                                   "different city spelling")
+        self._last_result = result
         if result.exported:
             self._last_outpath = result.outpath
             self.status_right.setText(result.outpath)
+        elif result.leads:
+            self.status_right.setText("results ready — not exported yet")
+        else:
+            self.status_right.setText("no leads to export")
         if stats["total"] and result.report.raw_count:
             self.status_left.setText(
                 f"{stats['total']} leads · {self.proxy.rowCount()} shown after filter")
         if result.error:
             self.log.write(result.error, "error")
+        if self._panel is not None and self._panel.isVisible():
+            dial, iso = self._panel_context()
+            self._panel.set_leads(result.leads, result.columns)
+            self._panel.set_context(dial, iso)
+            self._panel.sub_label.setText(self._panel_subtitle())
+        self._sync_panel_button()
+        self._sync_export_button()
 
     def _on_failed(self, message: str, hint_text: str) -> None:
         self.log.write(message, "error")
@@ -859,6 +1036,8 @@ class MainWindow(QMainWindow):
         act_maps = menu.addAction(icons.icon("pin", self.p.text_dim, 14), "Open in Google Maps")
         act_site = menu.addAction(icons.icon("external", self.p.text_dim, 14), "Open website")
         act_phone = menu.addAction(icons.icon("search", self.p.text_dim, 14), "Search phone online")
+        act_wa = menu.addAction(icons.icon("chat", self.p.text_dim, 14), "Send WhatsApp message")
+        act_panel = menu.addAction(icons.icon("table", self.p.text_dim, 14), "Open in leads panel")
         chosen = menu.exec(self.table.viewport().mapToGlobal(pos))
         if chosen is None:
             return
@@ -881,6 +1060,10 @@ class MainWindow(QMainWindow):
             phone = str(lead.get("phone") or "").strip()
             if phone:
                 QGuiApplication.openUrl(QUrl(f"https://www.google.com/search?q={phone}"))
+        elif chosen == act_wa:
+            self.message_lead(lead)
+        elif chosen == act_panel:
+            self.open_panel()
 
     def open_row(self, index) -> None:
         source = self.proxy.mapToSource(index)
@@ -919,6 +1102,16 @@ class MainWindow(QMainWindow):
         self.act_run.setShortcut(QKeySequence("Ctrl+R"))
         self.act_run.triggered.connect(self.toggle_run)
 
+        self.act_panel = QAction("&Leads panel", self)
+        self.act_panel.setShortcut(QKeySequence("Ctrl+P"))
+        self.act_panel.setEnabled(False)
+        self.act_panel.triggered.connect(self.open_panel)
+
+        self.act_export = QAction("&Export…", self)
+        self.act_export.setShortcut(QKeySequence("Ctrl+S"))
+        self.act_export.setEnabled(False)
+        self.act_export.triggered.connect(lambda: self.export_results())
+
         act_about = QAction(f"&About MAPLEAD {VERSION}", self)
         act_about.triggered.connect(self.about)
 
@@ -927,6 +1120,8 @@ class MainWindow(QMainWindow):
 
         menu = bar.addMenu("&MAPLEAD")
         menu.addAction(self.act_run)
+        menu.addAction(self.act_panel)
+        menu.addAction(self.act_export)
         menu.addSeparator()
         menu.addAction(self.act_keys)
         menu.addAction(self.act_theme)
@@ -1008,13 +1203,15 @@ class MainWindow(QMainWindow):
             idx = self.format_combo.findData(fmt)
             if idx >= 0:
                 self.format_combo.setCurrentIndex(idx)
-            # a hand-picked path is sticky; an auto-suggested one gets a fresh
-            # timestamp every launch
-            if data.get("outpath"):
+            # Only a path the user explicitly picked is sticky. Older versions
+            # also saved the path used by an export dialog, which made every
+            # later search reuse that name; treat those as automatic.
+            if data.get("outpath") and data.get("outpath_manual"):
                 self.out_edit.setText(data["outpath"])
                 self._manual_path = True
             else:
                 self.out_edit.setText(self._suggest_path())
+                self._manual_path = False
         except (TypeError, ValueError):
             self.out_edit.setText(self._suggest_path())
 
@@ -1040,6 +1237,7 @@ class MainWindow(QMainWindow):
             "enrich": spec.enrich,
             "format": spec.fmt,
             "outpath": self.out_edit.text() if self._manual_path else "",
+            "outpath_manual": self._manual_path,
         }))
         s.sync()
 

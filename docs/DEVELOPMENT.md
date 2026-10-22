@@ -69,11 +69,13 @@ maplead/
   gui/
     app.py              entry point, theme bootstrap, --selftest
     main_window.py      window: form, stats, table, activity log
+    lead_panel.py       card view of the leads + WhatsApp message template
     widgets.py          cards, searchable combo, field picker, table model
     keys.py             API key manager (paste · verify live · save)
     worker.py           harvest + key validation on a QThread
     icons.py            inline SVG icon set (no image files)
     theme.py            dark/light palettes and the stylesheet
+  contacts.py           WhatsApp number normalisation + {placeholder} messages
 packaging/              icon (svg+png+ico), .desktop file, PyInstaller specs, launchers
 tools/screenshots.py    regenerates docs/screenshots/*
 build-appimage.sh       one-command AppImage build (+ optional --install)
@@ -213,10 +215,15 @@ AppImage once with `--appimage-extract` into `~/.maplead-runtime/` and runs its
 
 `maplead-gui --selftest` runs headless (`QT_QPA_PLATFORM=offscreen` works, a real
 display is optional) and verifies: the window builds, the demo engine returns leads,
-the xlsx is written, the table model matches the result set, the searchable combo
-filters, the field picker applies presets and locks unavailable fields, and the keys
-dialog renders every provider. This is what CI runs and what the build script runs
-against the finished AppImage.
+the table model matches the result set, the searchable combo filters, the field picker
+applies presets and locks unavailable fields, and the keys dialog renders every
+provider. It also covers the 1.2.0 features: a harvest writes **no** file by itself,
+the **Export** button and `Ctrl+S` path write the requested format, the suggested
+filename follows the newest city/business (including accent transliteration),
+WhatsApp numbers are normalised and templates render `{nome}` from the lead, and the
+leads panel renders every selected field with working filters. This is what CI runs
+on Linux and Windows, and what the build scripts run against the finished AppImage
+and `.exe`.
 
 ```bash
 QT_QPA_PLATFORM=offscreen ./maplead-gui.py --selftest

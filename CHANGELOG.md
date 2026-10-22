@@ -4,6 +4,44 @@ All notable changes to MAPLEAD. Format follows [Keep a Changelog](https://keepac
 
 ## [Unreleased]
 
+## [1.2.0] — 2026-10-22
+
+### Added
+- **Leads panel** — a card view of the results, opened from the results header,
+  the right-click menu or `Ctrl+P`. It renders every selected field (not just
+  the table columns), opens websites, Google Maps, e-mail and social profiles
+  with one click, and shows `—` for fields the provider did not return.
+- **WhatsApp outreach** — a button next to every phone number opens `wa.me` with
+  a first message pre-filled from a template you write once. Placeholders such
+  as `{nome}`, `{cidade}`, `{site}` and `{saudacao}` are filled from the search
+  result itself, so the greeting uses the scraped business name even when the
+  WhatsApp profile has none. The template is stored in the app settings and has
+  a live preview with the real lead.
+- Panel filters (*Has WhatsApp*, *Has phone*, *Has website*, *No website*,
+  *Has e-mail*), a debounced search across all selected fields, sorting by
+  rating / reviews / name, pagination, per-card TSV copy, and *Send WhatsApp
+  message* / *Open in leads panel* in the grid's right-click menu.
+- The panel refreshes after each run and keeps its position, filters and saved
+  WhatsApp message while the next search is running.
+
+### Changed
+- **Exports are now explicit.** Finishing a search no longer writes a file
+  automatically; the results stay in the window until the user presses
+  **Export** (or `Ctrl+S`). The export section still selects the format
+  and suggested path, but no file is created without that action.
+- The suggested export name now follows the **latest search** (business + city)
+  instead of sticking to the first one; accents are transliterated so
+  `São Paulo` becomes `sao-paulo`.
+- Both release builds — Linux AppImage and Windows portable `.exe` — bundle the
+  new leads panel and contact helpers; the Windows and Linux CI jobs run the
+  same headless self-test before publishing.
+
+### Fixed
+- Toggling to the light theme and back to dark works again; the second toggle
+  no longer talks to the discarded window.
+- The **Export** button now writes the file reliably (Qt's `clicked(bool)`
+  argument is no longer mistaken for a path).
+
 ## [1.1.3] — 2026-10-21
 
 ### Added
@@ -102,7 +140,9 @@ All notable changes to MAPLEAD. Format follows [Keep a Changelog](https://keepac
 - Linux x86_64 is the only packaged platform for now; the terminal wizard still runs
   anywhere Python 3.9+ does.
 
-[Unreleased]: https://github.com/DariusDev16/maplead/compare/v1.1.2...main
+[Unreleased]: https://github.com/DariusDev16/maplead/compare/v1.2.0...main
+[1.2.0]: https://github.com/DariusDev16/maplead/releases/tag/v1.2.0
+[1.1.3]: https://github.com/DariusDev16/maplead/releases/tag/v1.1.3
 [1.1.2]: https://github.com/DariusDev16/maplead/releases/tag/v1.1.2
 [1.1.1]: https://github.com/DariusDev16/maplead/releases/tag/v1.1.1
 [1.1.0]: https://github.com/DariusDev16/maplead/releases/tag/v1.1.0

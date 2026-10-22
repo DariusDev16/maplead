@@ -1,7 +1,7 @@
 name: Release
 
 # Bump VERSION in maplead/art.py, tag, push:
-#   git tag v1.1.0 && git push origin v1.1.0
+#   git tag v1.2.0 && git push origin v1.2.0
 
 on:
   push:
@@ -64,6 +64,18 @@ jobs:
           body: |
             One AppImage for Linux, one portable .exe for Windows. Both are the whole
             product: the desktop window and the terminal wizard in a single file.
+
+            **Highlights in 1.2.0**
+
+            - Leads panel with one-click website, Maps, e-mail and social links.
+            - WhatsApp buttons with a saved first-message template (`{nome}`,
+              `{cidade}`, `{site}` and more resolved from the scraped lead).
+            - Explicit **Export** (`Ctrl+S`): a search never writes a file by itself.
+            - Export filenames follow the latest business + city, with accents
+              transliterated (`São Paulo` → `sao-paulo`).
+            - Dark → light → dark theme toggling fixed.
+
+            Full notes: https://github.com/${{ github.repository }}/blob/main/CHANGELOG.md
 
             **Linux x86_64**
 

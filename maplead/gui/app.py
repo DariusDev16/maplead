@@ -205,16 +205,20 @@ def _main(argv: Optional[Sequence[str]] = None) -> int:
 
     def swap(name: str) -> None:
         """Rebuild the window under a new palette (icons are palette-bound)."""
-        geometry = window.saveGeometry()
-        window._save_state()                 # so the new window comes back filled in
+        nonlocal window
+        current = window
+        geometry = current.saveGeometry()
+        current._save_state()                # so the new window comes back filled in
         theme_mod.apply_theme(app, theme_mod.PALETTES[name])
         fresh = MainWindow(theme_mod.PALETTES[name])
         fresh.restoreGeometry(geometry)
         fresh.theme_changed.connect(swap)
         fresh.show()
         windows.append(fresh)
-        window.setAttribute(Qt.WA_DeleteOnClose, True)
-        window.close()
+        current.setAttribute(Qt.WA_DeleteOnClose, True)
+        current.close()
+        # the next toggle must operate on the window that is now on screen
+        window = fresh
 
     window.theme_changed.connect(swap)
     window.show()
@@ -270,6 +274,8 @@ def selftest(window) -> int:
     idx = window.format_combo.findData("xlsx")
     if idx >= 0:
         window.format_combo.setCurrentIndex(idx)
+    window._manual_path = False
+    window.out_edit.setText(window._suggest_path())
 
     problems = window._problems()
     if problems:
@@ -301,7 +307,9 @@ def selftest(window) -> int:
     window._on_finished(result)
     print(f"[selftest] leads      : {len(result.leads)}")
     print(f"[selftest] table rows : {window.model.rowCount()} x {window.model.columnCount()}")
-    print(f"[selftest] exported   : {result.exported} -> {result.outpath}")
+    print(f"[selftest] auto-export: {result.exported} "
+          f"(file exists: {os.path.exists(result.outpath)})")
+    print(f"[selftest] export btn : {window.export_btn.isEnabled()}")
     print(f"[selftest] queries    : {len(result.report.queries_run)} "
           f"in {result.report.elapsed:.2f}s")
     print(f"[selftest] stats      : {result.stats['total']} leads, "
@@ -314,9 +322,54 @@ def selftest(window) -> int:
     print(f"[selftest] filters    : {result.report.filtered or 'none'}, "
           f"landlines in the result: {len(landlines)}")
 
+    # the harvest must not have written anything; the explicit export must
+    no_auto_export = not result.exported and not os.path.exists(result.outpath)
+    exported = window.export_results(result.outpath)
+    print(f"[selftest] exported   : {exported} -> {result.outpath} "
+          f"(exists: {os.path.exists(result.outpath)})")
+
+    # and the actual button click must work (Qt sends clicked(bool) as an arg)
+    click_path = os.path.join(os.path.dirname(result.outpath), "clicked.xlsx")
+    seen = {"path": "not called"}
+    original_export = window.export_results
+
+    def _clicked(path=None):
+        seen["path"] = path
+        return original_export(click_path)
+
+    window.export_results = _clicked
+    try:
+        window.export_btn.click()
+    finally:
+        window.export_results = original_export
+    clicked = os.path.exists(click_path) and seen["path"] is None
+    print(f"[selftest] button     : {clicked} -> {click_path}")
+
+    # the auto-suggested name must follow the newest city/business
+    old_city = window.city_combo.currentText()
+    old_business = window.business_combo.currentText()
+    window.city_combo.setCurrentText("São Paulo")
+    window.business_combo.setCurrentText("Plumber")
+    first_name = os.path.basename(window.spec().outpath)
+    window.city_combo.setCurrentText("Rio de Janeiro")
+    window.business_combo.setCurrentText("Electrician")
+    second_name = os.path.basename(window.spec().outpath)
+    window.city_combo.setCurrentText(old_city)
+    window.business_combo.setCurrentText(old_business)
+    name_ok = ("plumber-sao-paulo" in first_name
+               and "electrician-rio-de-janeiro" in second_name
+               and first_name != second_name
+               and not window._manual_path)
+    print(f"[selftest] file names : {first_name} -> {second_name} "
+          f"(automatic: {not window._manual_path})")
+
     ok = (len(result.leads) > 0
+          and no_auto_export
+          and exported
           and result.exported
           and os.path.exists(result.outpath)
+          and clicked
+          and name_ok
           and window.model.rowCount() == len(result.leads)
           and not landlines)
     if not ok:
@@ -328,9 +381,11 @@ def selftest(window) -> int:
 
 def _selftest_widgets(window) -> bool:
     """Exercise the dialogs and list widgets headlessly."""
+    from .. import contacts
     from ..data import fields as FD
     from ..engine import phone_type
     from .keys import KeysDialog
+    from .lead_panel import LeadsPanel, load_message_template
     from .widgets import FieldPickerDialog, SearchCombo
 
     ok = True
@@ -380,6 +435,67 @@ def _selftest_widgets(window) -> bool:
     print(f"[selftest] keys dialog: {rows} providers, file {keys.env_path}")
     ok &= rows >= 5 and "ok" in keys.rows["outscraper"].message.text()
     keys.deleteLater()
+
+    # --- WhatsApp numbers -------------------------------------------------- #
+    numbers = [
+        ("+55 (11) 91234-5678", "+55", "br", "5511912345678"),
+        ("(11) 91234-5678", "+55", "br", "5511912345678"),
+        ("07123 456789", "+44", "gb", "447123456789"),
+        ("(512) 555-0100", "+1", "us", "15125550100"),
+        ("+49 0151 2345678", "+49", "de", "491512345678"),
+    ]
+    got = [contacts.normalize_wa_number(value, dial, iso)
+           for value, dial, iso, _ in numbers]
+    print(f"[selftest] whatsapp numbers: {got}")
+    ok &= got == [want for *_, want in numbers]
+
+    # --- first-message template ------------------------------------------- #
+    sample = {"name": "Padaria X", "city": "São Paulo", "rating": 4.5,
+              "reviews": 128, "phone": "(11) 91234-5678"}
+    rendered = contacts.render_template("Olá {nome}, tudo bem?", sample)
+    wa_url = contacts.whatsapp_url_for(sample, rendered, dial="+55", iso="br")
+    print(f"[selftest] message: {rendered!r} -> {wa_url.split('?')[0]}")
+    ok &= rendered == "Olá Padaria X, tudo bem?"
+    ok &= wa_url.startswith("https://wa.me/5511912345678?text=Ol%C3%A1")
+    ok &= contacts.render_template("Olá {nome}!", {}) == "Olá!"
+    ok &= contacts.unknown_placeholders("Oi {bairro}") == ("bairro",)
+
+    # --- leads panel: every selected field, filters, paging ---------------- #
+    total = len(window.model.leads)
+    panel = LeadsPanel(window.model.leads, window.model.columns, window.p,
+                       dial="+49", country_code="de", parent=window)
+    rendered_cards = panel.rendered_count()
+    panel._set_filter("site")
+    with_site = panel.visible_count()
+    panel._set_filter("nos")
+    without_site = panel.visible_count()
+    panel._set_filter("all")
+    first = window.model.leads[0]
+    real_url = contacts.whatsapp_url_for(
+        first, contacts.render_template(load_message_template(), first),
+        dial="+49", iso="de")
+    print(f"[selftest] leads panel: {rendered_cards} cards, "
+          f"site={with_site}, no-site={without_site}, "
+          f"wa={real_url.split('?')[0]}")
+    ok &= rendered_cards == min(total, LeadsPanel.PAGE)
+    ok &= with_site == total and without_site == 0     # demo always has a site
+    ok &= real_url.startswith("https://wa.me/49")
+    panel.deleteLater()
+
+    # --- export shortcut wiring ------------------------------------------- #
+    shortcut_seen = {"called": False}
+    original_export_action = window.export_results
+    window.export_results = lambda path=None: (
+        shortcut_seen.__setitem__("called", True) or True)
+    try:
+        window.act_export.trigger()
+    finally:
+        window.export_results = original_export_action
+    shortcuts_ok = (window.act_export.shortcut().toString() == "Ctrl+S"
+                    and shortcut_seen["called"])
+    print(f"[selftest] shortcuts  : Ctrl+S export={shortcut_seen['called']} "
+          f"Ctrl+P panel={window.act_panel.shortcut().toString() == 'Ctrl+P'}")
+    ok &= shortcuts_ok and window.act_panel.shortcut().toString() == "Ctrl+P"
 
     print("[selftest] OK" if ok else "[selftest] FAILED: widget checks")
     return bool(ok)

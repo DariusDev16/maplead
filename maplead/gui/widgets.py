@@ -396,6 +396,28 @@ def header_label(key: str) -> str:
     return _SHORT_HEADERS.get(key) or key.replace("_", " ").capitalize()
 
 
+def display_value(key: str, value: Any) -> str:
+    """One cell as text: stars for a rating, yes/no for flags, lists joined."""
+    if value is None:
+        return ""
+    if key == "rating":
+        try:
+            stars = "★" * int(float(value))
+            return f"{stars} {value}"
+        except (TypeError, ValueError):
+            return str(value)
+    if isinstance(value, bool):
+        return "yes" if value else "no"
+    if isinstance(value, float):
+        return f"{value:g}"
+    if isinstance(value, (list, tuple)):
+        return ", ".join(str(v) for v in value)[:120]
+    if isinstance(value, dict):
+        import json
+        return json.dumps(value, ensure_ascii=False)[:120]
+    return str(value)
+
+
 class LeadsModel(QAbstractTableModel):
     """Table model over a list of lead dicts; columns follow the field keys."""
 
@@ -472,24 +494,7 @@ class LeadsModel(QAbstractTableModel):
 
     @staticmethod
     def _display(key: str, value: Any) -> str:
-        if value is None:
-            return ""
-        if key == "rating":
-            try:
-                stars = "★" * int(float(value))
-                return f"{stars} {value}"
-            except (TypeError, ValueError):
-                return str(value)
-        if isinstance(value, bool):
-            return "yes" if value else "no"
-        if isinstance(value, float):
-            return f"{value:g}"
-        if isinstance(value, (list, tuple)):
-            return ", ".join(str(v) for v in value)[:120]
-        if isinstance(value, dict):
-            import json
-            return json.dumps(value, ensure_ascii=False)[:120]
-        return str(value)
+        return display_value(key, value)
 
 
 class LeadsFilter(QSortFilterProxyModel):

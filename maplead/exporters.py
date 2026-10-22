@@ -12,6 +12,7 @@ import csv
 import json
 import os
 import re
+import unicodedata
 import zipfile
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Sequence, Tuple
@@ -413,5 +414,8 @@ def write(fmt: str, path: str, leads: Sequence[Dict[str, Any]],
 
 def suggest_path(fmt: str, query: str, outdir: str = "leads") -> str:
     stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
-    slug = re.sub(r"[^a-z0-9]+", "-", query.lower()).strip("-")[:48] or "leads"
+    # transliterate accents so "São Paulo" becomes "sao-paulo", not "s-o-paulo"
+    plain = unicodedata.normalize("NFKD", query or "")
+    plain = plain.encode("ascii", "ignore").decode("ascii").lower()
+    slug = re.sub(r"[^a-z0-9]+", "-", plain).strip("-")[:48] or "leads"
     return os.path.join(outdir, f"{slug}-{stamp}.{EXT.get(fmt, 'csv')}")

@@ -15,7 +15,7 @@ from typing import Any, Dict, List, Optional
 
 from PySide6.QtCore import QObject, Signal
 
-from .. import engine, exporters, paths
+from .. import engine, exporters
 from ..data import countries as CO
 from ..data import fields as FD
 from ..net import ApiError
@@ -55,6 +55,7 @@ class RunResult:
     columns: List[str]
     outpath: str
     fmt: str
+    meta: Dict[str, Any] = field(default_factory=dict)
     exported: bool = False
     error: str = ""
     error_hint: str = ""
@@ -109,7 +110,7 @@ def explain(exc: Exception) -> str:
 
 
 class HarvestWorker(QObject):
-    """Runs engine.harvest + export off the GUI thread."""
+    """Runs engine.harvest off the GUI thread; saving stays user-triggered."""
 
     log = Signal(str, str)          # message, level
     progress = Signal(float)        # 0..1
@@ -169,19 +170,15 @@ class HarvestWorker(QObject):
             "fields": len(columns),
             "generated_at": _now(),
         }
+        # Harvest only. Writing the file is an explicit action in the window
+        # (Export), so a search never creates a file behind the user's back.
         result = RunResult(leads=leads, report=report, stats=stats,
-                           columns=columns, outpath=spec.outpath, fmt=spec.fmt)
-
-        if leads and spec.outpath:
-            try:
-                paths.ensure_dir(os.path.dirname(os.path.abspath(spec.outpath)) or ".")
-                info = exporters.write(spec.fmt, spec.outpath, leads, columns, meta)
-                result.exported = True
-                self.log.emit(f"Wrote {info['rows']} rows × {info['columns']} columns "
-                              f"→ {spec.outpath}", "ok")
-            except OSError as exc:
-                result.error = f"Could not write {spec.outpath}: {exc}"
-                self.log.emit(result.error, "error")
+                           columns=columns, outpath=spec.outpath, fmt=spec.fmt,
+                           meta=meta)
+        if leads:
+            self.log.emit(
+                f"Found {len(leads)} leads — nothing written yet. "
+                f"Use Export when you want the file.", "info")
         self.finished.emit(result)
         self.progress.emit(1.0)
 

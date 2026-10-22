@@ -20,11 +20,11 @@ New here? Read this once, then the [README](../README.md) is just a reminder.
 
 ### Linux x86_64
 
-Download `MAPLEAD-1.1.3-x86_64.AppImage`, then:
+Download `MAPLEAD-1.2.0-x86_64.AppImage`, then:
 
 ```bash
-chmod +x MAPLEAD-1.1.3-x86_64.AppImage     # first time only
-./MAPLEAD-1.1.3-x86_64.AppImage
+chmod +x MAPLEAD-1.2.0-x86_64.AppImage     # first time only
+./MAPLEAD-1.2.0-x86_64.AppImage
 ```
 
 After `./build-appimage.sh --install` you can also just type `maplead`, and the app
@@ -36,7 +36,7 @@ only things it expects from the system are a display and the usual C library.
 The same file runs the terminal wizard too — no Python needed:
 
 ```bash
-./MAPLEAD-1.1.3-x86_64.AppImage --cli --demo
+./MAPLEAD-1.2.0-x86_64.AppImage --cli --demo
 ```
 
 **No FUSE?** Older AppImages mount themselves through `libfuse.so.2`. If your system
@@ -46,15 +46,15 @@ and the cache refreshes itself when the AppImage is rebuilt.
 
 ### Windows 10/11 x64
 
-Download `MAPLEAD-1.1.3-windows-x64.exe` and double-click it. That is the whole
+Download `MAPLEAD-1.2.0-windows-x64.exe` and double-click it. That is the whole
 app: one portable file, nothing to unpack, nothing to install, no admin rights.
 
 The same file is the terminal wizard — run it from PowerShell or cmd:
 
 ```powershell
-.\MAPLEAD-1.1.3-windows-x64.exe --cli             # guided wizard
-.\MAPLEAD-1.1.3-windows-x64.exe --cli --demo      # no key, no network
-.\MAPLEAD-1.1.3-windows-x64.exe --doctor          # host diagnostics
+.\MAPLEAD-1.2.0-windows-x64.exe --cli             # guided wizard
+.\MAPLEAD-1.2.0-windows-x64.exe --cli --demo      # no key, no network
+.\MAPLEAD-1.2.0-windows-x64.exe --doctor          # host diagnostics
 ```
 
 Any flag the window does not know (`--demo`, `--doctor`, `-k`, …) goes straight to
@@ -123,7 +123,7 @@ Press **Run search** or `Ctrl+R`. While it runs:
   back and how many survived the filters;
 - the form is locked so a run cannot be corrupted by a stray click;
 - **Stop** (`Ctrl+R` again, or the button) finishes the current query and keeps what
-  it already collected — the file is still written.
+  it already collected. Nothing is written to disk until you press **Export**.
 
 Because a text query returns at most 60 places from Google (and a few hundred from
 the other providers), MAPLEAD widens the net with query variants — synonyms from the
@@ -138,11 +138,51 @@ reached or the variants run out.
   visible column at once.
 - **Double-click** a row to open that business in Google Maps.
 - **Right-click** a row: copy cell, copy row, copy row as TSV (paste straight into
-  Sheets/Excel), copy selection as spreadsheet text, open in Maps, open website, or
-  search the phone number online.
+  Sheets/Excel), copy selection as spreadsheet text, open in Maps, open website,
+  search the phone number online, open it in WhatsApp or in the leads panel.
 - **Copy selection** copies the highlighted rows (all columns) to the clipboard.
 
+### The leads panel
+
+**Leads panel** (top right of the results card, or `Ctrl+P`) shows the same run as
+cards instead of a grid — the fields you selected, all of them, laid out for
+reading rather than for a spreadsheet:
+
+- **Every link opens with one click**: website, Google Maps, e-mail, Facebook,
+  Instagram, LinkedIn and the address. Empty fields stay visible as `—` so you
+  can tell "not returned" from "not selected".
+- **WhatsApp next to every phone number** opens `wa.me` with the number already
+  filled in. The first message is pre-filled from a template you write once:
+  **WhatsApp message** in the panel header. Placeholders are taken from the
+  search result, never from the number's WhatsApp profile:
+
+  | placeholder | value |
+  |---|---|
+  | `{nome}` | business name returned by the search |
+  | `{categoria}` | business category |
+  | `{cidade}` / `{estado}` / `{endereco}` | location fields |
+  | `{telefone}` / `{site}` / `{email}` | contact fields |
+  | `{nota}` / `{avaliacoes}` | rating and review count |
+  | `{saudacao}` | Bom dia / Boa tarde / Boa noite |
+
+  Example: `Olá {nome}! Tudo bem?` becomes `Olá Padaria São João! Tudo bem?`.
+  Unknown placeholders are highlighted in the preview instead of silently
+  disappearing. The template is remembered between launches.
+- **Chips filter the list**: *Has WhatsApp*, *Has phone*, *Has website*,
+  *No website*, *Has e-mail*. The search box matches every visible field, and
+  the sort menu orders by rating, reviews or name.
+- **Copy** on a card puts the whole row (TSV) on the clipboard.
+- **Right-click a grid row** also has *Send WhatsApp message* and *Open in leads
+  panel*. The panel stays open while you work and refreshes after the next run.
+
 ## 7 · The export file
+
+A search **never writes a file by itself**. Results stay in the grid and in the
+leads panel until you press **Export** at the top of the results card (or
+`Ctrl+S`). The
+`8 · export options` section only chooses the format, name and folder used when
+you do. This also means you can inspect, filter, message or copy leads first, run
+another search, and only save the ones you actually want.
 
 | format | what you get |
 |---|---|
@@ -169,8 +209,8 @@ The original interface, still fully supported and dependency-free:
 Without Python, the packaged builds carry the same wizard:
 
 ```bash
-./MAPLEAD-1.1.3-x86_64.AppImage --cli --demo          # Linux: the AppImage is both
-.\MAPLEAD-1.1.3-windows-x64.exe --cli --demo          # Windows: same trick, one .exe
+./MAPLEAD-1.2.0-x86_64.AppImage --cli --demo          # Linux: the AppImage is both
+.\MAPLEAD-1.2.0-windows-x64.exe --cli --demo          # Windows: same trick, one .exe
 ```
 
 Guided mode shows long lists side by side, sized to your terminal, so the 65

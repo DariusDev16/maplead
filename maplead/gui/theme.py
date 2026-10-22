@@ -322,6 +322,73 @@ def component_qss(p: Palette) -> str:
     QToolButton:hover {{ border-color: {p.accent}; }}
     QSplitter::handle {{ background: transparent; }}
     QSplitter::handle:hover {{ background: {p.border}; }}
+
+    /* ---------- leads panel ---------- */
+    QFrame#panelHeader {{
+        background: {p.surface};
+        border: 1px solid {p.border};
+        border-radius: 12px;
+    }}
+    QLabel#panelTitle {{ font-size: 18px; font-weight: 700; color: {p.text}; }}
+    QLabel#panelSub {{ color: {p.text_dim}; font-size: 12px; }}
+    QFrame#leadCard {{
+        background: {p.surface};
+        border: 1px solid {p.border};
+        border-radius: 14px;
+    }}
+    QFrame#leadCard:hover {{ border-color: {p.accent}; }}
+    QLabel#leadName {{ font-size: 16px; font-weight: 700; color: {p.text}; }}
+    QLabel#leadMeta {{ color: {p.text_dim}; font-size: 12px; }}
+    QLabel#leadRating {{ color: {p.warning}; font-size: 13px; font-weight: 700; }}
+    QLabel#leadFieldLabel {{
+        color: {p.text_dim}; font-size: 10px; font-weight: 700;
+        letter-spacing: 0.6px;
+    }}
+    QLabel#leadValue {{ color: {p.text}; font-size: 12.5px; }}
+    QLabel#leadMuted {{ color: {p.text_dim}; font-size: 12.5px; }}
+    QLabel#linkLabel {{ color: {p.accent}; font-weight: 600; }}
+    QLabel[chip="true"] {{
+        background: {p.surface_alt};
+        border: 1px solid {p.border};
+        border-radius: 8px;
+        padding: 1px 7px;
+        color: {p.text_dim};
+        font-size: 11px;
+    }}
+    QLabel[chip="true"][tone="ok"] {{ color: {p.success}; border-color: {p.success}; }}
+    QLabel[chip="true"][tone="warn"] {{ color: {p.warning}; border-color: {p.warning}; }}
+    QLabel[chip="true"][tone="bad"] {{ color: {p.danger}; border-color: {p.danger}; }}
+    QLabel[chip="true"][tone="wa"] {{ color: #25d366; border-color: #25d366; }}
+    QPushButton#waBtn {{
+        background: #25d366;
+        color: #06281c;
+        border: none;
+        border-radius: 8px;
+        padding: 6px 12px;
+        font-weight: 700;
+    }}
+    QPushButton#waBtn:hover {{ background: #1ebe5b; }}
+    QPushButton#waBtn:pressed {{ background: #17a34f; }}
+    QPushButton#waBtn:disabled {{ background: {p.border}; color: {p.text_dim}; }}
+    QPushButton[chip="true"] {{
+        background: {p.surface_alt};
+        border: 1px solid {p.border};
+        border-radius: 14px;
+        padding: 4px 12px;
+        color: {p.text_dim};
+    }}
+    QPushButton[chip="true"]:hover {{ border-color: {p.accent}; color: {p.text}; }}
+    QPushButton[chip="true"]:checked {{
+        background: {p.accent};
+        border-color: {p.accent};
+        color: {p.accent_text};
+        font-weight: 700;
+    }}
+    QFrame#templateCard {{
+        background: {p.window};
+        border: 1px solid {p.border};
+        border-radius: 10px;
+    }}
     """
 
 

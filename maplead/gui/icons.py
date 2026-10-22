@@ -42,6 +42,11 @@ PATHS: Dict[str, str] = {
     "trash": _STROKE.format(color="{color}", body='<path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/>'),
     "external": _STROKE.format(color="{color}", body='<path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>'
                                                       '<path d="M15 3h6v6M21 3l-9 9"/>'),
+    "phone": _STROKE.format(color="{color}", body='<path d="M5 3h3l2 5-2.3 1.7a15 15 0 0 0 5.6 5.6L15 13l5 2v3a2 2 0 0 1-2.2 2A17 17 0 0 1 3 5.2 2 2 0 0 1 5 3z"/>'),
+    "mail": _STROKE.format(color="{color}", body='<rect x="3" y="5" width="18" height="14" rx="2"/>'
+                                                 '<path d="M3.5 6.5 12 13l8.5-6.5"/>'),
+    "chat": _STROKE.format(color="{color}", body='<path d="M21 11.5a8.5 8.5 0 0 1-12.4 7.6L4 20.5l1.4-4.3A8.5 8.5 0 1 1 21 11.5z"/>'
+                                                 '<path d="M8.5 9.4h7M8.5 13h4.5"/>'),
     "download": _STROKE.format(color="{color}", body='<path d="M12 3v12M7.5 10.5 12 15l4.5-4.5"/>'
                                                      '<path d="M4 20h16"/>'),
 
