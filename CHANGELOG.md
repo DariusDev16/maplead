@@ -32,6 +32,11 @@ unchanged in this release.
 - `tools/bulk_test.py` — try the sender on your own numbers without a search
   (`--forget` removes them from the history afterwards).
 
+### Fixed
+- A WhatsApp number taken from the provider's `whatsapp` field (used when the
+  main phone is a landline) no longer gets the country code with a stray `+`,
+  which produced numbers like `++351…`.
+
 ### Changed
 - The AppImage now bundles QtWebEngine (the browser engine that runs WhatsApp
   Web inside the app), so the file is bigger. `build-appimage.sh` installs the

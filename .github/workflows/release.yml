@@ -1,7 +1,10 @@
 name: Release
 
 # Bump VERSION in maplead/art.py, tag, push:
-#   git tag v1.2.0 && git push origin v1.2.0
+#   git tag v1.3.0 && git push origin v1.3.0
+#
+# A tag push builds the Linux AppImage only. The Windows job runs when the
+# workflow is started by hand (workflow_dispatch).
 
 on:
   push:
@@ -31,7 +34,9 @@ jobs:
           sudo apt-get update -qq
           sudo apt-get install -y --no-install-recommends \
             libglib2.0-0 libegl1 libxkbcommon-x11-0 libxcb-cursor0 \
-            libdbus-1-3 libfontconfig1 fuse libfuse2 desktop-file-utils
+            libdbus-1-3 libfontconfig1 fuse libfuse2 desktop-file-utils \
+            libnss3 libnspr4 libxcomposite1 libxdamage1 libxrandr2 libxtst6 \
+            libxkbfile1 libasound2
 
       - name: build + smoke test
         run: ./build-appimage.sh --no-test
@@ -62,20 +67,31 @@ jobs:
           tag_name: ${{ github.event.inputs.tag || github.ref_name }}
           name: ${{ steps.meta.outputs.name }}
           body: |
-            One AppImage for Linux, one portable .exe for Windows. Both are the whole
-            product: the desktop window and the terminal wizard in a single file.
+            **MAPLEAD 1.3.0 — bulk WhatsApp sender (Linux)**
 
-            **Highlights in 1.2.0**
+            The leads panel can now send your WhatsApp message to a whole filter of
+            leads by itself, one at a time, with safety pauses against blocks.
 
-            - Leads panel with one-click website, Maps, e-mail and social links.
-            - WhatsApp buttons with a saved first-message template (`{nome}`,
-              `{cidade}`, `{site}` and more resolved from the scraped lead).
-            - Explicit **Export** (`Ctrl+S`): a search never writes a file by itself.
-            - Export filenames follow the latest business + city, with accents
-              transliterated (`São Paulo` → `sao-paulo`).
-            - Dark → light → dark theme toggling fixed.
+            ![bulk send button](https://raw.githubusercontent.com/${{ github.repository }}/main/docs/screenshots/bulk-panel.png)
 
-            Full notes: https://github.com/${{ github.repository }}/blob/main/CHANGELOG.md
+            **What's new**
+
+            - **Bulk send** button in the leads panel: pick a filter (e.g. *No website*),
+              untick who you want to skip, preview each message, press *Start sending*.
+            - **WhatsApp Web inside the app**: scan the QR code once, the session is kept.
+              Numbers that are not on WhatsApp are detected and skipped.
+            - **Safety pauses** (editable): random 45–120 s between messages, 10 min rest
+              every 10, a *"may get blocked — continue? (Yes/No)"* question every 25 and a
+              50-a-day limit.
+            - **Contact history**: leads already messaged are marked *Contacted* and
+              skipped next time; new *Not contacted* filter.
+            - Fix: WhatsApp numbers taken from the provider's `whatsapp` field no longer
+              get a doubled `+` in front.
+
+            ![picker](https://raw.githubusercontent.com/${{ github.repository }}/main/docs/screenshots/bulk-picker.png)
+
+            Full notes: https://github.com/${{ github.repository }}/blob/main/CHANGELOG.md ·
+            guide: https://github.com/${{ github.repository }}/blob/main/docs/GUIDE.md#bulk-whatsapp
 
             **Linux x86_64**
 
@@ -89,24 +105,16 @@ jobs:
             `APPIMAGE_EXTRACT_AND_RUN=1` — it unpacks itself into `~/.maplead-runtime/`
             and runs from there.
 
-            **Windows 10/11 x64**
+            Windows: this release has no new `.exe`; keep using 1.2.0 for now.
 
-            Download `MAPLEAD-*-windows-x64.exe` and double-click it. Nothing to unpack,
-            nothing to install. The same file is the terminal wizard:
-
-            ```powershell
-            .\MAPLEAD-*-windows-x64.exe --cli --demo      # guided wizard, no key needed
-            .\MAPLEAD-*-windows-x64.exe --cli --doctor    # host diagnostics
-            ```
-
-            The build is unsigned, so SmartScreen asks once: *More info → Run anyway*.
-
-            The user guide covers the rest:
-            https://github.com/${{ github.repository }}/blob/main/docs/GUIDE.md
+            > Automated WhatsApp messages go against WhatsApp's terms of service. The
+            > pauses lower the risk of the number being restricted; they do not remove it.
           files: ${{ steps.meta.outputs.path }}
 
   windows:
     name: build Windows x64
+    # 1.3.0 ships for Linux only; build Windows by starting the workflow by hand
+    if: github.event_name == 'workflow_dispatch'
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4

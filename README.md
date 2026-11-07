@@ -127,6 +127,11 @@ Open the **Leads panel**, pick a filter (e.g. *No website*) and press **Bulk sen
 Everyone you message is remembered, so the next search skips them.
 Details and the safety settings: [docs/GUIDE.md › Bulk WhatsApp](docs/GUIDE.md#bulk-whatsapp).
 
+<p align="center">
+  <a href="docs/screenshots/bulk-picker.png"><img src="docs/screenshots/bulk-picker.png" width="64%" alt="bulk send: pick the leads, preview, safety settings"></a>
+  <a href="docs/screenshots/bulk-sender.png"><img src="docs/screenshots/bulk-sender.png" width="26%" alt="bulk send: progress and activity log"></a>
+</p>
+
 ---
 
 ## Terminal wizard

@@ -127,7 +127,7 @@ def normalize_wa_number(value: Any, dial: str = "", iso: str = "") -> str:
         return ""
 
     iso = (iso or "").strip().lower()
-    dial_digits = digits_only(dial) or DIAL_BY_ISO.get(iso, "")
+    dial_digits = digits_only(dial) or digits_only(DIAL_BY_ISO.get(iso, ""))
 
     if raw.startswith("+"):
         return _drop_trunk_zero(digits, iso, dial_digits)
