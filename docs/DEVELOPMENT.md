@@ -70,14 +70,17 @@ maplead/
     app.py              entry point, theme bootstrap, --selftest
     main_window.py      window: form, stats, table, activity log
     lead_panel.py       card view of the leads + WhatsApp message template
+    bulk_sender.py      bulk WhatsApp: lead picker, safety settings, WhatsApp Web sender
     widgets.py          cards, searchable combo, field picker, table model
     keys.py             API key manager (paste · verify live · save)
     worker.py           harvest + key validation on a QThread
     icons.py            inline SVG icon set (no image files)
     theme.py            dark/light palettes and the stylesheet
   contacts.py           WhatsApp number normalisation + {placeholder} messages
+  outreach.py           bulk-send queue, safety pacing, contact history (no Qt)
 packaging/              icon (svg+png+ico), .desktop file, PyInstaller specs, launchers
 tools/screenshots.py    regenerates docs/screenshots/*
+tools/bulk_test.py      try the bulk WhatsApp sender on your own numbers
 build-appimage.sh       one-command AppImage build (+ optional --install)
 build-windows.ps1       one-command Windows build: one portable .exe
 docs/                   user guide, development notes and screenshots
@@ -86,7 +89,7 @@ docs/                   user guide, development notes and screenshots
 ## Running from source
 
 ```bash
-python3 -m venv .venv-gui && .venv-gui/bin/python -m pip install PySide6-Essentials
+python3 -m venv .venv-gui && .venv-gui/bin/python -m pip install PySide6   # full: QtWebEngine for the bulk sender
 
 ./maplead.py --demo        # terminal wizard (needs no venv at all)
 ./maplead-gui.py           # desktop
@@ -116,7 +119,7 @@ MAPLEAD_OUTDIR=~/bin ./build-appimage.sh      # somewhere else
 
 What it does, in order:
 
-1. creates/updates `.venv-gui` (PySide6-Essentials + PyInstaller);
+1. creates/updates `.venv-gui` (PySide6 with QtWebEngine + PyInstaller);
 2. renders the PNG icons from `packaging/maplead.svg` (Qt does the rasterising — no
    ImageMagick, no Pillow);
 3. generates the `.desktop` entry (`Exec=AppRun`, replaced at install time);

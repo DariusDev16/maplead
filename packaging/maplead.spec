@@ -17,8 +17,10 @@ EXCLUDES = [
     "PySide6.QtQml", "PySide6.QtQuick", "PySide6.QtQuickWidgets", "PySide6.QtQuick3D",
     "PySide6.Qt3DCore", "PySide6.Qt3DRender", "PySide6.Qt3DInput", "PySide6.Qt3DLogic",
     "PySide6.Qt3DAnimation", "PySide6.Qt3DExtras", "PySide6.QtCharts", "PySide6.QtDataVisualization",
-    "PySide6.QtMultimedia", "PySide6.QtMultimediaWidgets", "PySide6.QtWebEngineCore",
-    "PySide6.QtWebEngineWidgets", "PySide6.QtWebChannel", "PySide6.QtWebSockets",
+    "PySide6.QtMultimedia", "PySide6.QtMultimediaWidgets",
+    # QtWebEngineCore/Widgets + QtWebChannel stay: the bulk WhatsApp sender
+    # runs WhatsApp Web inside the app
+    "PySide6.QtWebSockets",
     "PySide6.QtBluetooth", "PySide6.QtNfc", "PySide6.QtPositioning", "PySide6.QtLocation",
     "PySide6.QtSensors", "PySide6.QtSerialPort", "PySide6.QtTest", "PySide6.QtHelp",
     "PySide6.QtDesigner", "PySide6.QtUiTools", "PySide6.QtSql", "PySide6.QtPdf",
@@ -44,6 +46,10 @@ a = Analysis(                                          # noqa: F821
         "maplead.gui.icons",
         "maplead.gui.theme",
         "maplead.contacts",
+        "maplead.outreach",
+        "maplead.gui.bulk_sender",
+        "PySide6.QtWebEngineCore",
+        "PySide6.QtWebEngineWidgets",
         # `--cli` imports the wizard lazily, so PyInstaller cannot see it
         "maplead.cli",
         "PySide6.QtSvg",

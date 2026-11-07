@@ -154,6 +154,11 @@ def create_app(argv: Optional[Sequence[str]] = None):
     """Boot QApplication and paint the first palette."""
     args = build_parser().parse_args(argv)
 
+    if QApplication.instance() is None:
+        # QtWebEngine (bulk WhatsApp sender) needs shared GL contexts set
+        # before the application object exists
+        from PySide6.QtCore import Qt as _Qt
+        QApplication.setAttribute(_Qt.AA_ShareOpenGLContexts, True)
     app = QApplication.instance() or QApplication(list(sys.argv[:1]))
     app.setApplicationName("MAPLEAD")
     app.setApplicationDisplayName("MAPLEAD")

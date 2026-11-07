@@ -4,6 +4,39 @@ All notable changes to MAPLEAD. Format follows [Keep a Changelog](https://keepac
 
 ## [Unreleased]
 
+## [1.3.0] — 2026-11-07
+
+Linux (AppImage) only for now — the Windows build and the terminal wizard are
+unchanged in this release.
+
+### Added
+- **Bulk WhatsApp sender** — a new **Bulk send** button in the leads panel sends
+  your saved WhatsApp message to every lead of the current filter (for example
+  *No website*) one by one, with no clicks per lead.
+  1. A checklist shows the leads that have a WhatsApp number. Untick anyone you
+     want to leave out and click a row to preview its message.
+  2. **Start sending** opens WhatsApp Web inside MAPLEAD. Scan the QR code once;
+     the session is saved for next time.
+  3. Each chat is opened with the message filled in and sent. Numbers that are
+     not on WhatsApp are detected and skipped. **Pause**, **Skip lead** and
+     **Stop** work at any time, and an activity log shows every step.
+- **Safety pauses** against WhatsApp blocks, all editable before each run:
+  random 45–120 s pause between messages, a 10 min rest every 10 messages, a
+  *"WhatsApp may block the number after this many messages — continue? (Yes/No)"*
+  prompt every 25 messages, and a 50-a-day limit that asks before going over.
+- **Contact history** — every number messaged is saved with its date and result
+  (sent / not on WhatsApp / failed / skipped) in
+  `~/.local/share/maplead/whatsapp-history.json`. Leads already contacted come
+  unticked, show a **Contacted** chip on their card, and the new
+  **Not contacted** filter hides them.
+- `tools/bulk_test.py` — try the sender on your own numbers without a search
+  (`--forget` removes them from the history afterwards).
+
+### Changed
+- The AppImage now bundles QtWebEngine (the browser engine that runs WhatsApp
+  Web inside the app), so the file is bigger. `build-appimage.sh` installs the
+  full `PySide6` package instead of `PySide6-Essentials`.
+
 ## [1.2.0] — 2026-10-22
 
 ### Added
