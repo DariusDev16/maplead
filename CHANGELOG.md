@@ -4,6 +4,12 @@ All notable changes to MAPLEAD. Format follows [Keep a Changelog](https://keepac
 
 ## [Unreleased]
 
+### Fixed
+- **Bulk send** no longer crashes the AppImage on newer distros (e.g. Debian 13).
+  The image shipped the build machine's older `libstdc++`, which stopped the
+  system GPU driver from loading, so WhatsApp Web had no OpenGL. The C++ runtime
+  and the GL/EGL/DRM/GBM libraries now come from the host system.
+
 ## [1.3.0] — 2026-11-07
 
 Linux (AppImage) only for now — the Windows build and the terminal wizard are
