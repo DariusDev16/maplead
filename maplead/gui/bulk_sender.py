@@ -197,8 +197,8 @@ class BulkSendDialog(QDialog):
         self.selected: List[outreach.OutreachItem] = []
 
         self.setWindowTitle("MAPLEAD — bulk WhatsApp")
-        self.setMinimumSize(860, 640)
-        self.resize(980, 760)
+        self.setMinimumSize(900, 640)
+        self.resize(1120, 760)
         self.setSizeGripEnabled(True)
 
         root = QVBoxLayout(self)
@@ -309,6 +309,7 @@ class BulkSendDialog(QDialog):
         split.addWidget(side)
         split.setStretchFactor(0, 3)
         split.setStretchFactor(1, 2)
+        split.setSizes([640, 420])
         root.addWidget(split, 1)
 
         # footer ---------------------------------------------------------------
@@ -354,12 +355,14 @@ class BulkSendDialog(QDialog):
             check.setFlags(Qt.ItemIsUserCheckable | Qt.ItemIsEnabled | Qt.ItemIsSelectable)
             check.setCheckState(Qt.Unchecked if item.contacted else Qt.Checked)
             self.table.setItem(row, self.COL_CHECK, check)
-            self.table.setItem(row, self.COL_NAME, QTableWidgetItem(item.name))
+            name_cell = QTableWidgetItem(item.name)
+            name_cell.setToolTip(item.name)
+            self.table.setItem(row, self.COL_NAME, name_cell)
             self.table.setItem(row, self.COL_NUMBER, QTableWidgetItem("+" + item.number))
             entry = self.history.get(item.number)
             if entry and item.contacted:
                 when = (entry.last_sent or entry.first_sent or entry.at)[:10]
-                text = f"Contacted {when}"
+                text = f"Contacted {when[8:10]}/{when[5:7]}" if len(when) == 10 else "Contacted"
             elif entry:
                 text = outreach.STATUS_LABELS.get(entry.status, entry.status)
             else:

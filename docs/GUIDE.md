@@ -180,6 +180,8 @@ reading rather than for a spreadsheet:
 **Bulk send** in the panel header sends the saved message to every lead of the
 current filter and search (for example *No website*) that has a WhatsApp number.
 
+![Bulk send in the leads panel](screenshots/bulk-panel.png)
+
 1. A checklist opens: untick anyone you want to leave out (leads already
    messaged come unticked), click a row to preview its message, and check the
    **Safety** settings.
@@ -188,6 +190,13 @@ current filter and search (for example *No website*) that has a WhatsApp number.
 3. Each lead is opened with the message filled in and sent; numbers without
    WhatsApp are marked and skipped. **Pause**, **Skip lead** and **Stop** work at
    any time. Keep the window open (minimising is fine).
+
+![pick the leads, preview the message, safety settings](screenshots/bulk-picker.png)
+
+<p align="center">
+  <img src="screenshots/bulk-sender.png" width="300" alt="progress and activity log">
+  <img src="screenshots/bulk-confirm.png" width="400" alt="continue? question after 25 messages">
+</p>
 
 | Safety setting | default | what it does |
 |---|---|---|
