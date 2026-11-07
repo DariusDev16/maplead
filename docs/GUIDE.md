@@ -20,11 +20,11 @@ New here? Read this once, then the [README](../README.md) is just a reminder.
 
 ### Linux x86_64
 
-Download `MAPLEAD-1.2.0-x86_64.AppImage`, then:
+Download `MAPLEAD-1.3.0-x86_64.AppImage`, then:
 
 ```bash
-chmod +x MAPLEAD-1.2.0-x86_64.AppImage     # first time only
-./MAPLEAD-1.2.0-x86_64.AppImage
+chmod +x MAPLEAD-1.3.0-x86_64.AppImage     # first time only
+./MAPLEAD-1.3.0-x86_64.AppImage
 ```
 
 After `./build-appimage.sh --install` you can also just type `maplead`, and the app
@@ -36,7 +36,7 @@ only things it expects from the system are a display and the usual C library.
 The same file runs the terminal wizard too — no Python needed:
 
 ```bash
-./MAPLEAD-1.2.0-x86_64.AppImage --cli --demo
+./MAPLEAD-1.3.0-x86_64.AppImage --cli --demo
 ```
 
 **No FUSE?** Older AppImages mount themselves through `libfuse.so.2`. If your system
@@ -169,11 +169,40 @@ reading rather than for a spreadsheet:
   Unknown placeholders are highlighted in the preview instead of silently
   disappearing. The template is remembered between launches.
 - **Chips filter the list**: *Has WhatsApp*, *Has phone*, *Has website*,
-  *No website*, *Has e-mail*. The search box matches every visible field, and
+  *No website*, *Has e-mail*, *Not contacted*. The search box matches every visible field, and
   the sort menu orders by rating, reviews or name.
 - **Copy** on a card puts the whole row (TSV) on the clipboard.
 - **Right-click a grid row** also has *Send WhatsApp message* and *Open in leads
   panel*. The panel stays open while you work and refreshes after the next run.
+
+### Bulk WhatsApp
+
+**Bulk send** in the panel header sends the saved message to every lead of the
+current filter and search (for example *No website*) that has a WhatsApp number.
+
+1. A checklist opens: untick anyone you want to leave out (leads already
+   messaged come unticked), click a row to preview its message, and check the
+   **Safety** settings.
+2. **Start sending** opens WhatsApp Web inside MAPLEAD. The first time, scan the
+   QR code (phone → WhatsApp → *Linked devices*); the session is kept for later.
+3. Each lead is opened with the message filled in and sent; numbers without
+   WhatsApp are marked and skipped. **Pause**, **Skip lead** and **Stop** work at
+   any time. Keep the window open (minimising is fine).
+
+| Safety setting | default | what it does |
+|---|---|---|
+| Pause from / up to | 45 – 120 s | random wait between two messages |
+| Rest every / for | 10 msgs / 10 min | longer break after each burst |
+| Ask after | 25 msgs | stops and asks *"WhatsApp may block the number — continue?"* |
+| Daily limit | 50 msgs | asks before going over today's total |
+
+Every number is saved with date and status in `whatsapp-history.json` in the
+data folder (`~/.local/share/maplead/` on Linux, `%LOCALAPPDATA%\maplead\` on
+Windows); contacted leads show a *Contacted* chip and are skipped by default.
+
+> Automated messaging goes against WhatsApp's terms of service. The pauses lower
+> the risk of the number being restricted; they do not remove it. Use a number
+> dedicated to prospecting.
 
 ## 7 · The export file
 
@@ -209,7 +238,7 @@ The original interface, still fully supported and dependency-free:
 Without Python, the packaged builds carry the same wizard:
 
 ```bash
-./MAPLEAD-1.2.0-x86_64.AppImage --cli --demo          # Linux: the AppImage is both
+./MAPLEAD-1.3.0-x86_64.AppImage --cli --demo          # Linux: the AppImage is both
 .\MAPLEAD-1.2.0-windows-x64.exe --cli --demo          # Windows: same trick, one .exe
 ```
 

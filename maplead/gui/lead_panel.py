@@ -28,7 +28,7 @@ from PySide6.QtWidgets import (QButtonGroup, QComboBox, QDialog, QFrame,
                                QMessageBox, QPlainTextEdit, QPushButton,
                                QScrollArea, QVBoxLayout, QWidget)
 
-from .. import contacts
+from .. import contacts, outreach
 from ..data import fields as FD
 from . import icons
 from .theme import Palette
@@ -45,6 +45,7 @@ FILTERS: Tuple[Tuple[str, str], ...] = (
     ("site", "Has website"),
     ("nos", "No website"),
     ("email", "Has e-mail"),
+    ("new", "Not contacted"),
 )
 
 SORTS: Tuple[Tuple[str, str], ...] = (
@@ -336,6 +337,9 @@ class LeadsPanel(QDialog):
         self._has_wa: List[bool] = []
         self._has_site: List[bool] = []
         self._has_email: List[bool] = []
+        self._contacted: List[bool] = []
+        self._history = outreach.History()
+        self._sender = None
         self._rendered = 0
         # typing in the search box rebuilds the cards: debounce it
         self._search_timer = QTimer(self)
@@ -400,6 +404,14 @@ class LeadsPanel(QDialog):
         message_btn.setToolTip("Edit the message that opens with every WhatsApp chat")
         message_btn.clicked.connect(self.edit_template)
         row.addWidget(message_btn)
+
+        bulk_btn = QPushButton("  Bulk send")
+        bulk_btn.setIcon(icons.icon("play", self.p.accent_text, 13))
+        bulk_btn.setProperty("accent", True)
+        bulk_btn.setToolTip("Send the saved message to every lead in the current "
+                            "filter through WhatsApp Web, with safety pauses")
+        bulk_btn.clicked.connect(self.open_bulk_sender)
+        row.addWidget(bulk_btn)
 
         close_btn = QPushButton("Close")
         close_btn.clicked.connect(self.close)
@@ -471,6 +483,9 @@ class LeadsPanel(QDialog):
                           for lead in self._leads]
         self._has_email = [bool(str(lead.get("email") or "").strip())
                            for lead in self._leads]
+        self._contacted = [self._history.was_contacted(
+            contacts.whatsapp_number(lead, dial, iso) or "-")
+            for lead in self._leads]
 
     def set_leads(self, leads: Sequence[Dict[str, Any]],
                   columns: Optional[Sequence[str]] = None) -> None:
@@ -518,6 +533,8 @@ class LeadsPanel(QDialog):
             return not self._has_site[index]
         if key == "email":
             return self._has_email[index]
+        if key == "new":
+            return self._has_wa[index] and not self._contacted[index]
         return True
 
     @staticmethod
@@ -620,7 +637,11 @@ class LeadsPanel(QDialog):
         if self._has("phone") and str(lead.get("phone") or "").strip():
             chips.append(chip("Phone", "ok"))
         if self._show_wa(lead):
-            chips.append(chip("WhatsApp", "wa"))
+            number = contacts.whatsapp_number(lead, self._dial, self._iso)
+            if self._history.was_contacted(number):
+                chips.append(chip("Contacted", "warn"))
+            else:
+                chips.append(chip("WhatsApp", "wa"))
         if self._has("email") and str(lead.get("email") or "").strip():
             chips.append(chip("E-mail", "ok"))
         status = str(lead.get("status") or "").upper()
@@ -914,6 +935,32 @@ class LeadsPanel(QDialog):
         if window.exec() == QDialog.Accepted:
             self._template = load_message_template()
             self._status("WhatsApp message saved — it opens with every chat")
+
+    def open_bulk_sender(self) -> None:
+        """Queue the leads of the current filter for bulk WhatsApp sending."""
+        if self._sender is not None and self._sender.is_running():
+            self._sender.showNormal()
+            self._sender.raise_()
+            self._sender.activateWindow()
+            return
+        from .bulk_sender import open_bulk_sender
+        label = dict(FILTERS).get(self._filter_key, "")
+        if self.search.text().strip():
+            label += f" · “{self.search.text().strip()}”"
+        window = open_bulk_sender(self._visible, self.p, dial=self._dial,
+                                  country_code=self._iso, filter_label=label,
+                                  parent=self)
+        if window is None:
+            return
+        self._sender = window
+        window.history_changed.connect(self._reload_history)
+        window.destroyed.connect(lambda *_: setattr(self, "_sender", None))
+        self._status(f"Bulk send started for {len(window.items)} lead(s)")
+
+    def _reload_history(self) -> None:
+        self._history.load()
+        self._precompute()
+        self._apply_filters(reset=False)
 
     def _status(self, text: str) -> None:
         self.status_label.setText(text)

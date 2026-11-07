@@ -77,9 +77,10 @@ if [[ ! -x "$PY" ]]; then
     rm -rf "$tmp"
   fi
 fi
-if ! "$PY" -c "import PySide6" >/dev/null 2>&1; then
+if ! "$PY" -c "import PyInstaller; from PySide6 import QtWebEngineWidgets" >/dev/null 2>&1; then
   "$PY" -m pip install -q --upgrade pip
-  "$PY" -m pip install -q "PySide6-Essentials>=6.8" pyinstaller
+  # full PySide6: the bulk WhatsApp sender needs QtWebEngine
+  "$PY" -m pip install -q "PySide6>=6.8" pyinstaller
 fi
 "$PY" -c "import PySide6; from PySide6 import QtCore; print('    PySide6', QtCore.__version__)"
 

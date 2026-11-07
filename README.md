@@ -18,6 +18,7 @@ lead-scraper API and writes them to CSV / Excel / JSON / TXT / TSV / HTML.
 | 🧭 **65 countries / 1044 cities** | typed, filtered, auto-completed — no spelling games |
 | 🏷️ **68 business types · 35 fields** | you choose exactly which columns come out |
 | 💬 **Leads panel + WhatsApp** | cards with one-click links and a first message built from the lead |
+| 📨 **Bulk WhatsApp** | sends the message to a whole filter through WhatsApp Web, with safety pauses and a contact history |
 | 📄 **6 export formats** | csv · xlsx · json · txt · tsv · html |
 
 <p align="center">
@@ -32,8 +33,8 @@ lead-scraper API and writes them to CSV / Excel / JSON / TXT / TSV / HTML.
 **Linux x86_64, AppImage** — one file, no packages, no root:
 
 ```bash
-chmod +x MAPLEAD-1.2.0-x86_64.AppImage
-./MAPLEAD-1.2.0-x86_64.AppImage
+chmod +x MAPLEAD-1.3.0-x86_64.AppImage
+./MAPLEAD-1.3.0-x86_64.AppImage
 ```
 
 Building it yourself (also fine for arm64/other distros with a rebuild):
@@ -114,6 +115,18 @@ folder — `~/Documents/maplead/` on Linux,
 
 ![harvest report](docs/screenshots/terminal-report.png)
 
+## 5 · Message leads in bulk (Linux)
+
+Open the **Leads panel**, pick a filter (e.g. *No website*) and press **Bulk send**:
+
+1. untick the leads you want to skip — the message preview shows exactly what each one gets;
+2. **Start sending** opens WhatsApp Web inside MAPLEAD (scan the QR code once);
+3. it sends one message at a time, with random pauses, rests and a
+   *"may get blocked — continue?"* question every 25 messages.
+
+Everyone you message is remembered, so the next search skips them.
+Details and the safety settings: [docs/GUIDE.md › Bulk WhatsApp](docs/GUIDE.md#bulk-whatsapp).
+
 ---
 
 ## Terminal wizard
@@ -165,9 +178,9 @@ On Linux the wizard is inside the AppImage — the same file as the desktop app,
 nothing has to be installed first either:
 
 ```bash
-./MAPLEAD-1.2.0-x86_64.AppImage --cli --demo
-./MAPLEAD-1.2.0-x86_64.AppImage --cli --country DE --city Berlin --business dentist
-./MAPLEAD-1.2.0-x86_64.AppImage --cli --doctor
+./MAPLEAD-1.3.0-x86_64.AppImage --cli --demo
+./MAPLEAD-1.3.0-x86_64.AppImage --cli --country DE --city Berlin --business dentist
+./MAPLEAD-1.3.0-x86_64.AppImage --cli --doctor
 ```
 
 You can add `~/.local/bin/maplead-cli` yourself (`#!/bin/sh` + `exec "$HOME/Apps"/MAPLEAD-*-x86_64.AppImage --cli "$@"`)
@@ -194,7 +207,8 @@ The terminal wizard runs anywhere Python 3.9+ does. macOS packaging is on the ro
 
 Lead data returned by these APIs is public business information. Respect each
 provider's terms and rate limits, and your GDPR/LGPD/PCCB obligations before
-cold-contacting anyone. MAPLEAD never edits Google Maps — it only reads what the
+cold-contacting anyone. Automated WhatsApp messages go against WhatsApp's terms of
+service: the bulk sender's pauses lower the risk of a ban, they do not remove it. MAPLEAD never edits Google Maps — it only reads what the
 provider APIs already expose.
 
 ## License
