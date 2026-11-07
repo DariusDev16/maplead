@@ -121,6 +121,21 @@ mkdir -p "$APPDIR/usr/bin" "$APPDIR/usr/lib" \
          "$APPDIR/usr/share/maplead"
 
 cp -a "$DIST/maplead" "$APPDIR/usr/lib/$BIN_NAME"
+
+# PyInstaller copies the build machine's C++ runtime into _internal. It must
+# come from the host instead: the host's GPU driver (Mesa, via LLVM) needs a
+# libstdc++ at least as new as the one it was built with, and an older bundled
+# copy wins on LD_LIBRARY_PATH, so the driver fails to load, QtWebEngine gets
+# no OpenGL and the app dies as soon as the bulk WhatsApp sender opens.
+# Both libraries are backwards compatible and on every Linux desktop (they are
+# on the AppImage excludelist for this reason).
+# libgbm is part of Mesa and must be the same release as the host's DRI driver
+# ("did not find extension DRI_Mesa", "GBM: Failed to initialize" otherwise,
+# and QtWebEngine cannot hand frames to the compositor).
+for so in libstdc++.so.6 libgcc_s.so.1 libgbm.so.1; do
+  find "$APPDIR/usr/lib/$BIN_NAME" -name "$so" -delete
+done
+
 cp packaging/maplead.svg "$APPDIR/usr/share/maplead/"
 cp packaging/maplead.png "$APPDIR/$ICON_NAME.png"
 cp packaging/maplead-256.png "$APPDIR/usr/share/icons/hicolor/256x256/apps/$ICON_NAME.png"
@@ -134,14 +149,14 @@ say "5b/7 bundling the small libs desktops tend to be missing"
 # Qt loads its X11/wayland plugins through libqxcb.so, whose DT_NEEDED list is
 # not satisfied on a bare Ubuntu/Fedora box. These are all tiny, permissively
 # licensed and identical across distros, so ship them inside the AppImage.
+# Never the GL/EGL loaders or libdrm: those must match the host's GPU driver.
 LIBDIR="$APPDIR/usr/lib/$BIN_NAME/lib"
 mkdir -p "$LIBDIR"
 BUNDLED=0
-for so in libEGL.so.1 libGL.so.1 libGLdispatch.so.0 libGLX.so.0 \
-          libxcb-cursor.so.0 libxcb-icccm.so.4 libxcb-image.so.0 libxcb-keysyms.so.1 \
+for so in libxcb-cursor.so.0 libxcb-icccm.so.4 libxcb-image.so.0 libxcb-keysyms.so.1 \
           libxcb-randr.so.0 libxcb-render-util.so.0 libxcb-shape.so.0 \
           libxcb-xinerama.so.0 libxcb-xkb.so.1 libxkbcommon-x11.so.0 \
-          libX11-xcb.so.1 libb2.so.1 libmd4c.so.0 libdrm.so.2; do
+          libX11-xcb.so.1 libb2.so.1 libmd4c.so.0; do
   src="$(find_lib "$so" || true)"
   if [[ -n "$src" ]]; then
     cp -L "$src" "$LIBDIR/$so"
