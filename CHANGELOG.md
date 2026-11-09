@@ -4,6 +4,8 @@ All notable changes to MAPLEAD. Format follows [Keep a Changelog](https://keepac
 
 ## [Unreleased]
 
+## [1.3.1] — 2026-11-09
+
 ### Fixed
 - The *No website* filter now includes leads whose website is only a social
   profile or link-in-bio page (Instagram, Facebook, Linktree and similar), and
