@@ -479,8 +479,7 @@ class LeadsPanel(QDialog):
                            for lead in self._leads]
         self._has_wa = [bool(contacts.whatsapp_number(lead, dial, iso))
                         for lead in self._leads]
-        self._has_site = [bool(str(lead.get("website") or "").strip())
-                          for lead in self._leads]
+        self._has_site = [contacts.has_real_website(lead) for lead in self._leads]
         self._has_email = [bool(str(lead.get("email") or "").strip())
                            for lead in self._leads]
         self._contacted = [self._history.was_contacted(
@@ -632,7 +631,7 @@ class LeadsPanel(QDialog):
 
     def _presence_chips(self, lead: Dict[str, Any]) -> List[QLabel]:
         chips: List[QLabel] = []
-        if self._has("website") and str(lead.get("website") or "").strip():
+        if self._has("website") and contacts.has_real_website(lead):
             chips.append(chip("Website", "ok"))
         if self._has("phone") and str(lead.get("phone") or "").strip():
             chips.append(chip("Phone", "ok"))
@@ -753,7 +752,8 @@ class LeadsPanel(QDialog):
             shown.add("maps_url")
         website = str(lead.get("website") or "").strip()
         if website and self._has("website"):
-            site_btn = QPushButton("Website")
+            site_btn = QPushButton(
+                "Social" if contacts.is_social_url(website) else "Website")
             site_btn.setProperty("flat", True)
             site_btn.setIcon(icons.icon("globe", self.p.text_dim, 13))
             site_btn.clicked.connect(lambda u=website: self._open_url(u))

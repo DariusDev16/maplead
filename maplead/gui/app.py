@@ -464,6 +464,8 @@ def _selftest_widgets(window) -> bool:
     ok &= wa_url.startswith("https://wa.me/5511912345678?text=Ol%C3%A1")
     ok &= contacts.render_template("Olá {nome}!", {}) == "Olá!"
     ok &= contacts.unknown_placeholders("Oi {bairro}") == ("bairro",)
+    ok &= not contacts.has_real_website({"website": "https://www.instagram.com/padaria"})
+    ok &= contacts.has_real_website({"website": "https://padaria.com.br"})
 
     # --- leads panel: every selected field, filters, paging ---------------- #
     total = len(window.model.leads)
