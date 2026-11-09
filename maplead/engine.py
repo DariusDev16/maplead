@@ -13,6 +13,7 @@ import time
 from dataclasses import dataclass, field
 from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple
 
+from .contacts import has_real_website
 from .providers import Provider, SearchRequest, SearchResult
 
 # --------------------------------------------------------------------------- #
@@ -265,7 +266,7 @@ def apply_filters(leads: Sequence[Dict[str, Any]], min_rating: float | None = No
             if not phone or phone_type(phone, country_code, dial) == "landline":
                 stats["skip_landlines"] += 1
                 continue
-        if require_website and not lead.get("website"):
+        if require_website and not has_real_website(lead):
             stats["require_website"] += 1
             continue
         if skip_closed and str(lead.get("status", "")).upper().startswith("CLOSED"):
@@ -454,7 +455,7 @@ def summarize(leads: Sequence[Dict[str, Any]]) -> Dict[str, Any]:
     return {
         "total": len(leads),
         "with_phone": sum(1 for l in leads if l.get("phone")),
-        "with_website": sum(1 for l in leads if l.get("website")),
+        "with_website": sum(1 for l in leads if has_real_website(l)),
         "with_email": sum(1 for l in leads if l.get("email")),
         "avg_rating": avg(ratings),
         "avg_reviews": avg([float(x) for x in review_totals]),

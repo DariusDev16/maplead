@@ -5,6 +5,11 @@ All notable changes to MAPLEAD. Format follows [Keep a Changelog](https://keepac
 ## [Unreleased]
 
 ### Fixed
+- The *No website* filter now includes leads whose website is only a social
+  profile or link-in-bio page (Instagram, Facebook, Linktree and similar), and
+  *Has website* leaves them out. Those cards drop the *Website* chip and label
+  their link button *Social*. *Only leads with a website*, `--require-website`
+  and the *with website* count follow the same rule.
 - **Bulk send** no longer crashes the AppImage on newer distros (e.g. Debian 13).
   The image shipped the build machine's older `libstdc++`, which stopped the
   system GPU driver from loading, so WhatsApp Web had no OpenGL. The C++ runtime

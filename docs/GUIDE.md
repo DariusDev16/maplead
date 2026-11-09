@@ -170,7 +170,10 @@ reading rather than for a spreadsheet:
   disappearing. The template is remembered between launches.
 - **Chips filter the list**: *Has WhatsApp*, *Has phone*, *Has website*,
   *No website*, *Has e-mail*, *Not contacted*. The search box matches every visible field, and
-  the sort menu orders by rating, reviews or name.
+  the sort menu orders by rating, reviews or name. A lead whose website is only a
+  social profile or link-in-bio page (Instagram, Facebook, Linktree...) counts as
+  *No website*. The *Only leads with a website* search option and the *with website*
+  tile use the same rule.
 - **Copy** on a card puts the whole row (TSV) on the clipboard.
 - **Right-click a grid row** also has *Send WhatsApp message* and *Open in leads
   panel*. The panel stays open while you work and refreshes after the next run.

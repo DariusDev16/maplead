@@ -19,7 +19,7 @@ from __future__ import annotations
 import datetime
 import re
 from typing import Any, Dict, Mapping, Optional, Tuple
-from urllib.parse import quote
+from urllib.parse import quote, urlsplit
 
 from .data import countries as CO
 
@@ -34,6 +34,45 @@ _TOKEN = re.compile(r"\{\s*([A-Za-z_][A-Za-z0-9_-]*)\s*\}")
 
 # The demo/outscraper providers may return this sentinel for a nameless place.
 _UNNAMED = "(unnamed business)"
+
+# Hosts that are a profile page, not a site of the business's own. Many owners
+# paste their Instagram or link-in-bio page into Google's "website" field.
+# Subdomains (www., m., pt-br.) count as the same host.
+_SOCIAL_HOSTS = frozenset({
+    "facebook.com", "fb.com", "fb.me", "m.me",
+    "instagram.com", "instagr.am", "threads.net", "threads.com",
+    "linkedin.com", "lnkd.in",
+    "twitter.com", "x.com", "t.co",
+    "tiktok.com", "kwai.com", "snapchat.com",
+    "youtube.com", "youtu.be",
+    "pinterest.com", "pinterest.com.br", "pin.it",
+    "whatsapp.com", "wa.me", "wa.link", "t.me", "telegram.me", "telegram.org",
+    # link-in-bio pages
+    "linktr.ee", "linktree.com", "linkin.bio", "bio.link", "bio.site", "lnk.bio",
+    "linkr.bio", "tap.bio", "zaap.bio", "campsite.bio", "taplink.cc", "taplink.at",
+    "taplink.ws", "beacons.ai", "beacons.page", "solo.to", "linkfly.to",
+    "milkshake.app", "msha.ke", "allmylinks.com", "about.me", "flow.page",
+    "linkpop.com", "hoo.be", "shor.by", "biolinky.co",
+})
+
+
+def is_social_url(url: Any) -> bool:
+    """True when ``url`` points at a social network or link-in-bio page."""
+    text = str(url or "").strip()
+    if not text:
+        return False
+    try:
+        host = urlsplit(text if "://" in text else f"https://{text}").hostname
+    except ValueError:
+        return False
+    labels = (host or "").lower().rstrip(".").split(".")
+    return any(".".join(labels[i:]) in _SOCIAL_HOSTS for i in range(len(labels)))
+
+
+def has_real_website(lead: Mapping[str, Any]) -> bool:
+    """True when the lead has a website that is not just a social profile."""
+    url = str(lead.get("website") or "").strip()
+    return bool(url) and not is_social_url(url)
 
 DEFAULT_TEMPLATE = (
     "Olá {nome}! Tudo bem? Encontrei vocês no Google Maps e gostaria de saber "

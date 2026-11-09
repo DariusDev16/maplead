@@ -975,7 +975,7 @@ class MainWindow(QMainWindow):
 
         self.stat_leads.set(str(leads), f"target {self.limit_spin.value()}")
         self.stat_phone.set(pct(phone), f"{phone} with a number")
-        self.stat_site.set(pct(site), f"{site} with a URL")
+        self.stat_site.set(pct(site), f"{site} with a site")
         self.stat_rating.set(f"{rating:.2f} ★" if rating else "–",
                              "average" if rating else "")
         self.stat_reviews.set(f"{reviews:,}", "total reviews")
