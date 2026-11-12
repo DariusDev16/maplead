@@ -1,7 +1,7 @@
 name: Release
 
 # Bump VERSION in maplead/art.py, tag, push:
-#   git tag v1.4.0 && git push origin v1.4.0
+#   git tag v1.4.1 && git push origin v1.4.1
 #
 # A tag push builds the Linux AppImage only. The Windows job runs when the
 # workflow is started by hand (workflow_dispatch).
@@ -67,26 +67,19 @@ jobs:
           tag_name: ${{ github.event.inputs.tag || github.ref_name }}
           name: ${{ steps.meta.outputs.name }}
           body: |
-            **MAPLEAD 1.4.0 — turbo mode (Linux)**
+            **MAPLEAD 1.4.1 — sending no longer stops at the "not on WhatsApp" popup (Linux)**
 
-            Turbo mode searches city by city and business by business, and sends your
-            WhatsApp message to every lead that passes your filter — with no clicks in
-            between.
+            **What's fixed**
 
-            **What's new**
+            - **Bulk send** and **Turbo mode** no longer wait for you to click the popup
+              WhatsApp shows for a number that has no account. The lead is marked
+              *Not on WhatsApp*, the popup is closed and the run goes on to the next lead.
+            - More wordings of that popup are recognised, and any other popup that keeps
+              the chat from opening is handled the same way after a few seconds; its text
+              is written to the activity log.
 
-            - **Turbo mode** (under *Run search*, or `Ctrl+T`): tick the cities and the
-              business types, pick the filter (*No website* by default) and start. It
-              searches the first business type in the first city, messages the matching
-              leads through the bulk sender, moves to the next business type and, after
-              the last one, to the next city — until the lists end or you press **Stop**.
-            - The same safety pauses as **Bulk send**. Leads already messaged are never
-              messaged twice.
-            - Finished searches are remembered, so starting turbo mode again continues
-              where it stopped.
-            - Every search uses provider credits; the setup window shows how many
-              searches your lists add up to. Turbo mode does not run with the Demo
-              provider.
+            New in 1.4.0: **Turbo mode** searches city by city and business by business,
+            and messages every lead that passes your filter.
 
             Full notes: https://github.com/${{ github.repository }}/blob/main/CHANGELOG.md ·
             guide: https://github.com/${{ github.repository }}/blob/main/docs/GUIDE.md
