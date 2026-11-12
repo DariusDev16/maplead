@@ -9,7 +9,8 @@ on:
 jobs:
   terminal:
     name: terminal wizard (no dependencies)
-    runs-on: ubuntu-latest
+    # ubuntu-latest no longer offers Python 3.9, the oldest version the wizard supports
+    runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
