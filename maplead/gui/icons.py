@@ -28,6 +28,7 @@ PATHS: Dict[str, str] = {
     # --- navigation / actions -------------------------------------------- #
     "play": _FILL.format(color="{color}", body='<path d="M7 4.5 L19 12 L7 19.5 Z" stroke="none"/>'),
     "stop": _FILL.format(color="{color}", body='<rect x="6" y="6" width="12" height="12" rx="2" stroke="none"/>'),
+    "bolt": _FILL.format(color="{color}", body='<path d="M13 2 4 14h6.5L10 22l10-13h-6.5z" stroke="none"/>'),
     "search": _STROKE.format(color="{color}", body='<circle cx="11" cy="11" r="7"/>'
                                                     '<path d="M20 20l-4.2-4.2"/>'),
     "refresh": _STROKE.format(color="{color}", body='<path d="M21 12a9 9 0 1 1-2.6-6.4"/>'

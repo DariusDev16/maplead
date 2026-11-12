@@ -48,6 +48,8 @@ a = Analysis(                                          # noqa: F821
         "maplead.contacts",
         "maplead.outreach",
         "maplead.gui.bulk_sender",
+        "maplead.turbo",
+        "maplead.gui.turbo",
         "PySide6.QtWebEngineCore",
         "PySide6.QtWebEngineWidgets",
         # `--cli` imports the wizard lazily, so PyInstaller cannot see it

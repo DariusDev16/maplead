@@ -175,6 +175,74 @@ def _profile():
 
 
 # --------------------------------------------------------------------------- #
+# the safety settings card (shared by the bulk and the turbo setup dialogs)
+# --------------------------------------------------------------------------- #
+
+class SafetyForm(QFrame):
+    """The "Safety" card: pauses, rests, the "continue?" threshold, the daily cap."""
+
+    changed = Signal()
+
+    def __init__(self, settings: outreach.SafetySettings,
+                 parent: Optional[QWidget] = None):
+        super().__init__(parent)
+        outer = QVBoxLayout(self)
+        outer.setContentsMargins(0, 0, 0, 0)
+        safety_card, sc = card("Safety")
+        grid = QGridLayout()
+        grid.setHorizontalSpacing(10)
+        grid.setVerticalSpacing(6)
+        s = settings
+        self.min_delay = self._spin(5, 3600, s.min_delay, " s")
+        self.max_delay = self._spin(5, 3600, s.max_delay, " s")
+        self.burst_size = self._spin(0, 500, s.burst_size, " msgs")
+        self.burst_rest = self._spin(0, 240, s.burst_rest // 60, " min")
+        self.warn_after = self._spin(0, 1000, s.warn_after, " msgs")
+        self.daily_limit = self._spin(0, 2000, s.daily_limit, " msgs")
+        rows = (
+            ("Pause from", self.min_delay, "Shortest random pause between two messages"),
+            ("Pause up to", self.max_delay, "Longest random pause between two messages"),
+            ("Rest every", self.burst_size, "After this many messages, take a longer rest (0 = never)"),
+            ("Rest for", self.burst_rest, "Length of that rest"),
+            ("Ask after", self.warn_after,
+             "Stop and ask whether to continue every time this many messages went out (0 = never)"),
+            ("Daily limit", self.daily_limit,
+             "Ask before going over this many messages today (0 = no limit)"),
+        )
+        for i, (label, spin, tip) in enumerate(rows):
+            grid.addWidget(field_label(label, tip), i // 2, (i % 2) * 2)
+            spin.setToolTip(tip)
+            spin.valueChanged.connect(lambda _=0: self.changed.emit())
+            grid.addWidget(spin, i // 2, (i % 2) * 2 + 1)
+        sc.addLayout(grid)
+        risk = QLabel("Automated messages go against WhatsApp's terms. The pauses "
+                      "lower the risk of the number being restricted, they do not "
+                      "remove it — prefer a number used only for prospecting.")
+        risk.setObjectName("hint")
+        risk.setWordWrap(True)
+        sc.addWidget(risk)
+        outer.addWidget(safety_card)
+
+    @staticmethod
+    def _spin(lo: int, hi: int, value: int, suffix: str) -> QSpinBox:
+        spin = QSpinBox()
+        spin.setRange(lo, hi)
+        spin.setValue(max(lo, min(hi, int(value))))
+        spin.setSuffix(suffix)
+        return spin
+
+    def value(self) -> outreach.SafetySettings:
+        return outreach.SafetySettings(
+            min_delay=self.min_delay.value(),
+            max_delay=self.max_delay.value(),
+            burst_size=self.burst_size.value(),
+            burst_rest=self.burst_rest.value() * 60,
+            warn_after=self.warn_after.value(),
+            daily_limit=self.daily_limit.value(),
+        ).normalized()
+
+
+# --------------------------------------------------------------------------- #
 # setup dialog: pick the leads and the safety settings
 # --------------------------------------------------------------------------- #
 
@@ -272,40 +340,9 @@ class BulkSendDialog(QDialog):
         pc.addWidget(self.preview)
         sl.addWidget(preview_card, 1)
 
-        safety_card, sc = card("Safety")
-        grid = QGridLayout()
-        grid.setHorizontalSpacing(10)
-        grid.setVerticalSpacing(6)
-        s = self.safety
-        self.min_delay = self._spin(5, 3600, s.min_delay, " s")
-        self.max_delay = self._spin(5, 3600, s.max_delay, " s")
-        self.burst_size = self._spin(0, 500, s.burst_size, " msgs")
-        self.burst_rest = self._spin(0, 240, s.burst_rest // 60, " min")
-        self.warn_after = self._spin(0, 1000, s.warn_after, " msgs")
-        self.daily_limit = self._spin(0, 2000, s.daily_limit, " msgs")
-        rows = (
-            ("Pause from", self.min_delay, "Shortest random pause between two messages"),
-            ("Pause up to", self.max_delay, "Longest random pause between two messages"),
-            ("Rest every", self.burst_size, "After this many messages, take a longer rest (0 = never)"),
-            ("Rest for", self.burst_rest, "Length of that rest"),
-            ("Ask after", self.warn_after,
-             "Stop and ask whether to continue every time this many messages went out (0 = never)"),
-            ("Daily limit", self.daily_limit,
-             "Ask before going over this many messages today (0 = no limit)"),
-        )
-        for i, (label, spin, tip) in enumerate(rows):
-            grid.addWidget(field_label(label, tip), i // 2, (i % 2) * 2)
-            spin.setToolTip(tip)
-            spin.valueChanged.connect(self._sync_footer)
-            grid.addWidget(spin, i // 2, (i % 2) * 2 + 1)
-        sc.addLayout(grid)
-        risk = QLabel("Automated messages go against WhatsApp's terms. The pauses "
-                      "lower the risk of the number being restricted, they do not "
-                      "remove it — prefer a number used only for prospecting.")
-        risk.setObjectName("hint")
-        risk.setWordWrap(True)
-        sc.addWidget(risk)
-        sl.addWidget(safety_card)
+        self.safety_form = SafetyForm(self.safety)
+        self.safety_form.changed.connect(self._sync_footer)
+        sl.addWidget(self.safety_form)
         split.addWidget(side)
         split.setStretchFactor(0, 3)
         split.setStretchFactor(1, 2)
@@ -332,14 +369,6 @@ class BulkSendDialog(QDialog):
         self._fill()
 
     # -- building -------------------------------------------------------------
-    @staticmethod
-    def _spin(lo: int, hi: int, value: int, suffix: str) -> QSpinBox:
-        spin = QSpinBox()
-        spin.setRange(lo, hi)
-        spin.setValue(max(lo, min(hi, int(value))))
-        spin.setSuffix(suffix)
-        return spin
-
     def _template(self) -> str:
         from .lead_panel import load_message_template
         return load_message_template()
@@ -417,14 +446,7 @@ class BulkSendDialog(QDialog):
             self.preview.setPlainText("No lead with a WhatsApp number in this filter.")
 
     def current_safety(self) -> outreach.SafetySettings:
-        return outreach.SafetySettings(
-            min_delay=self.min_delay.value(),
-            max_delay=self.max_delay.value(),
-            burst_size=self.burst_size.value(),
-            burst_rest=self.burst_rest.value() * 60,
-            warn_after=self.warn_after.value(),
-            daily_limit=self.daily_limit.value(),
-        ).normalized()
+        return self.safety_form.value()
 
     def _sync_footer(self, *_: Any) -> None:
         chosen = self._checked()
@@ -580,11 +602,33 @@ class WhatsAppSenderWindow(QDialog):
         self.timer.timeout.connect(self._tick)
 
         self._sync_counts()
-        self.log.write(f"{len(self.items)} lead(s) queued · pause "
-                       f"{self.safety.min_delay}-{self.safety.max_delay} s · rest "
-                       f"{self.safety.burst_rest // 60} min every "
-                       f"{self.safety.burst_size or '∞'} · ask after "
-                       f"{self.safety.warn_after or '∞'}", "info")
+        self._log_intro()
+
+    def _safety_summary(self) -> str:
+        return (f"pause {self.safety.min_delay}-{self.safety.max_delay} s · rest "
+                f"{self.safety.burst_rest // 60} min every "
+                f"{self.safety.burst_size or '∞'} · ask after "
+                f"{self.safety.warn_after or '∞'}")
+
+    def _log_intro(self) -> None:
+        self.log.write(f"{len(self.items)} lead(s) queued · "
+                       + self._safety_summary(), "info")
+
+    # -- hooks for a sender whose queue grows while it runs (turbo mode) -------
+    def _more_coming(self) -> bool:
+        """True when more leads may be queued after the last one."""
+        return False
+
+    def _queue_exhausted(self) -> None:
+        """Called when it is time for the next lead and the queue is empty."""
+        self._done("All leads handled")
+
+    def _extend_items(self, items: Sequence[outreach.OutreachItem]) -> None:
+        for item in items:
+            item.status = ""
+            self.items.append(item)
+        self.progress.setRange(0, max(1, len(self.items)))
+        self._sync_counts()
 
     # -- lifecycle ------------------------------------------------------------
     def start(self) -> None:
@@ -628,7 +672,7 @@ class WhatsAppSenderWindow(QDialog):
                 return
             self._remaining -= 1
             nxt = self._next_index()
-            who = self.items[nxt].name if nxt is not None else ""
+            who = self.items[nxt].name if nxt is not None else "new search"
             self.detail_label.setText(
                 f"{self._wait_reason.capitalize()} · next: {who} in "
                 f"{outreach.format_duration(self._remaining)}")
@@ -716,7 +760,7 @@ class WhatsAppSenderWindow(QDialog):
     def _open_next(self) -> None:
         nxt = self._next_index()
         if nxt is None:
-            self._done("All leads handled")
+            self._queue_exhausted()
             return
         # daily cap: ask once per run before going over it
         if (not self._daily_ok
@@ -766,8 +810,8 @@ class WhatsAppSenderWindow(QDialog):
         self.log.write(f"   {label}" + (f" — {error}" if error else ""), level)
         self._sync_counts()
 
-        if self._next_index() is None:
-            self._done("All leads handled")
+        if self._next_index() is None and not self._more_coming():
+            self._queue_exhausted()
             return
 
         if status == outreach.SENT:
