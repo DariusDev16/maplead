@@ -51,6 +51,7 @@ WHATSAPP_SEND = WHATSAPP_WEB + "send"
 OPEN_TIMEOUT = 60            # chat must open (or be reported invalid) by then
 VERIFY_TIMEOUT = 20          # the composer must empty after clicking send
 ENTER_FALLBACK_AT = 5        # press Enter ourselves if the click did nothing
+DIALOG_PATIENCE = 6          # a popup that stays this long, with no chat, blocks the lead
 
 
 # --------------------------------------------------------------------------- #
@@ -100,6 +101,16 @@ var mlSend = function () {
               'button[aria-label="Enviar"]', 'div[aria-label="Send"]',
               'div[aria-label="Enviar"]']);
 };
+var mlDialogs = function () {
+  var found = document.querySelectorAll(
+    '[data-animate-modal-popup="true"], [data-animate-modal-body="true"], ' +
+    'div[role="dialog"], div[role="alertdialog"], [aria-modal="true"]');
+  var list = [];
+  for (var i = 0; i < found.length; i++) {
+    if ((found[i].innerText || '').trim()) list.push(found[i]);
+  }
+  return list;
+};
 var mlComposer = function () {
   return mlq(['footer div[contenteditable="true"]',
               'div[contenteditable="true"][data-tab="10"]',
@@ -114,12 +125,19 @@ _JS_PROBE = _JS_HELPERS + r"""
                   'div[aria-label="Lista de chats"]']);
   var qr = mlq(['canvas[aria-label*="QR"]', 'canvas[aria-label*="qr"]',
                 'div[data-ref] canvas', '[data-testid="qrcode"]']);
-  var dialog = mlq(['[data-animate-modal-popup="true"]', 'div[role="dialog"]']);
+  var dialogs = mlDialogs();
+  var text = '';
+  var buttons = 0;
+  for (var i = 0; i < dialogs.length; i++) {
+    text += ' ' + (dialogs[i].innerText || '');
+    buttons += dialogs[i].querySelectorAll('button, [role="button"]').length;
+  }
   var composer = mlComposer();
   return JSON.stringify({
     logged: !!side || !!composer,
     qr: !!qr,
-    dialog: dialog ? (dialog.innerText || '').slice(0, 400) : '',
+    dialog: text.trim().slice(0, 400),
+    buttons: buttons,
     send: !!mlSend(),
     composer: composer ? (composer.innerText || '').trim().length : -1
   });
@@ -136,6 +154,18 @@ _JS_CLICK_SEND = _JS_HELPERS + r"""
 })();
 """
 
+# closes the popup WhatsApp leaves open for a number it could not open
+_JS_DISMISS_DIALOG = _JS_HELPERS + r"""
+(function () {
+  var dialogs = mlDialogs();
+  for (var i = 0; i < dialogs.length; i++) {
+    var all = dialogs[i].querySelectorAll('button, [role="button"]');
+    if (all.length) { all[all.length - 1].click(); return true; }
+  }
+  return false;
+})();
+"""
+
 _JS_FOCUS_COMPOSER = _JS_HELPERS + r"""
 (function () {
   var c = mlComposer();
@@ -146,8 +176,12 @@ _JS_FOCUS_COMPOSER = _JS_HELPERS + r"""
 """
 
 # texts of the popup WhatsApp shows for a number that has no account
-_INVALID_RE = re.compile(r"invalid|inv[áa]lid|no v[áa]lido|ung[üu]ltig|non valide|"
-                         r"not on whatsapp|n[ãa]o est[áa] no whatsapp", re.I)
+_INVALID_RE = re.compile(
+    r"invalid|inv[áa]lid|no v[áa]lido|ung[üu]ltig|non valide|"
+    r"(not|n['’]t|n[ãa]o|no|nicht|pas)\b[^.\n]{0,40}\bwhatsapp|"
+    r"whatsapp[^.\n]{0,40}\b(n[ãa]o|not|no)\b|"
+    r"n[ãa]o (existe|foi poss[íi]vel|encontr)|(couldn.t|could not|unable to) find|"
+    r"doesn.t exist|does not exist|no existe", re.I)
 # popups that are only a "please wait"
 _LOADING_RE = re.compile(r"starting chat|iniciando|loading|carregando|cargando", re.I)
 
@@ -524,6 +558,7 @@ class WhatsAppSenderWindow(QDialog):
         self._daily_ok = False           # user agreed to go over the cap
         self._enter_tried = False
         self._loaded = False             # the current lead's page finished loading
+        self._dialog_for = 0             # seconds a popup has been blocking the chat
 
         self.setWindowTitle("MAPLEAD — WhatsApp sender")
         self.setModal(False)
@@ -715,10 +750,19 @@ class WhatsAppSenderWindow(QDialog):
 
         if state == self.OPENING:
             dialog = str(info.get("dialog") or "")
-            if dialog and _INVALID_RE.search(dialog) and not _LOADING_RE.search(dialog):
+            blocking = bool(dialog) and not _LOADING_RE.search(dialog)
+            if blocking and _INVALID_RE.search(dialog):
+                self._dismiss_dialog()
                 self._finish(outreach.INVALID)
             elif info.get("send"):
                 self.page.runJavaScript(_JS_CLICK_SEND, 0, self._on_clicked)
+            elif (blocking and info.get("buttons") and info.get("logged")
+                  and self._dialog_step() >= DIALOG_PATIENCE):
+                # WhatsApp is showing a popup this build does not recognise and
+                # the chat never opened: do not wait for someone to click it
+                self._dismiss_dialog()
+                self._finish(outreach.INVALID,
+                             "WhatsApp said: " + " ".join(dialog.split())[:120])
             elif info.get("qr") and not info.get("logged"):
                 self.log.write("WhatsApp Web logged out — scan the QR code again", "warn")
                 self._index -= 1
@@ -737,6 +781,13 @@ class WhatsAppSenderWindow(QDialog):
                 self._enter_tried = True
                 self.page.runJavaScript(_JS_FOCUS_COMPOSER, 0,
                                         lambda ok: self._press_enter() if ok else None)
+
+    def _dialog_step(self) -> int:
+        self._dialog_for += 1
+        return self._dialog_for
+
+    def _dismiss_dialog(self) -> None:
+        self.page.runJavaScript(_JS_DISMISS_DIALOG, 0, lambda _ok: None)
 
     def _on_clicked(self, ok: Any) -> None:
         if self._state != self.OPENING:
@@ -791,6 +842,7 @@ class WhatsAppSenderWindow(QDialog):
                         f"+{item.number} · lead {nxt + 1} of {len(self.items)}")
         self.log.write(f"→ {item.name} (+{item.number})", "query")
         self._loaded = False
+        self._dialog_for = 0
         self.page.load(QUrl(url))
 
     def _finish(self, status: str, error: str = "") -> None:
