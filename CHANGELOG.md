@@ -4,6 +4,15 @@ All notable changes to MAPLEAD. Format follows [Keep a Changelog](https://keepac
 
 ## [Unreleased]
 
+## [1.4.1] — 2026-11-12
+
+### Fixed
+- **Bulk send** and **Turbo mode** no longer wait for you to click the popup
+  WhatsApp shows for a number that has no account. More wordings of that popup
+  are recognised, any other popup that keeps the chat from opening is treated
+  the same way after a few seconds, and the popup is closed automatically. The
+  lead is marked *Not on WhatsApp* and the run goes on to the next one.
+
 ## [1.4.0] — 2026-11-12
 
 Linux (AppImage) only — the Windows build and the terminal wizard are unchanged

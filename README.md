@@ -34,8 +34,8 @@ lead-scraper API and writes them to CSV / Excel / JSON / TXT / TSV / HTML.
 **Linux x86_64, AppImage** — one file, no packages, no root:
 
 ```bash
-chmod +x MAPLEAD-1.4.0-x86_64.AppImage
-./MAPLEAD-1.4.0-x86_64.AppImage
+chmod +x MAPLEAD-1.4.1-x86_64.AppImage
+./MAPLEAD-1.4.1-x86_64.AppImage
 ```
 
 Building it yourself (also fine for arm64/other distros with a rebuild):
@@ -200,9 +200,9 @@ On Linux the wizard is inside the AppImage — the same file as the desktop app,
 nothing has to be installed first either:
 
 ```bash
-./MAPLEAD-1.4.0-x86_64.AppImage --cli --demo
-./MAPLEAD-1.4.0-x86_64.AppImage --cli --country DE --city Berlin --business dentist
-./MAPLEAD-1.4.0-x86_64.AppImage --cli --doctor
+./MAPLEAD-1.4.1-x86_64.AppImage --cli --demo
+./MAPLEAD-1.4.1-x86_64.AppImage --cli --country DE --city Berlin --business dentist
+./MAPLEAD-1.4.1-x86_64.AppImage --cli --doctor
 ```
 
 You can add `~/.local/bin/maplead-cli` yourself (`#!/bin/sh` + `exec "$HOME/Apps"/MAPLEAD-*-x86_64.AppImage --cli "$@"`)
