@@ -20,11 +20,11 @@ New here? Read this once, then the [README](../README.md) is just a reminder.
 
 ### Linux x86_64
 
-Download `MAPLEAD-1.3.1-x86_64.AppImage`, then:
+Download `MAPLEAD-1.4.0-x86_64.AppImage`, then:
 
 ```bash
-chmod +x MAPLEAD-1.3.1-x86_64.AppImage     # first time only
-./MAPLEAD-1.3.1-x86_64.AppImage
+chmod +x MAPLEAD-1.4.0-x86_64.AppImage     # first time only
+./MAPLEAD-1.4.0-x86_64.AppImage
 ```
 
 After `./build-appimage.sh --install` you can also just type `maplead`, and the app
@@ -36,7 +36,7 @@ only things it expects from the system are a display and the usual C library.
 The same file runs the terminal wizard too — no Python needed:
 
 ```bash
-./MAPLEAD-1.3.1-x86_64.AppImage --cli --demo
+./MAPLEAD-1.4.0-x86_64.AppImage --cli --demo
 ```
 
 **No FUSE?** Older AppImages mount themselves through `libfuse.so.2`. If your system
@@ -216,6 +216,39 @@ Windows); contacted leads show a *Contacted* chip and are skipped by default.
 > the risk of the number being restricted; they do not remove it. Use a number
 > dedicated to prospecting.
 
+### Turbo mode
+
+**Turbo mode** (under *Run search*, or `Ctrl+T`) runs the search and the bulk
+send by itself for a list of cities and a list of business types. It uses the
+provider, country, region and fields of the search form, and the WhatsApp
+message saved in the leads panel. It needs a provider with an API key: the Demo
+provider returns made-up phone numbers, so turbo mode refuses it.
+
+1. Tick the **cities** and the **business types** to go through, in the order
+   listed. *Add* puts your own entry at the top of a list.
+2. Choose **who gets the message**: the *Lead filter* (*No website*, *Has
+   website*, *Has e-mail* or *Every lead with WhatsApp*) and the *Leads per
+   search*. The **Safety** settings are the ones Bulk WhatsApp uses.
+3. **Start turbo** opens WhatsApp Web inside MAPLEAD, then repeats: search one
+   business type in one city, keep the leads that pass the filter, send them the
+   message with the safety pauses, go to the next business type — and, after the
+   last one, to the next city. Each search also shows up in the results grid.
+4. It ends after the last business type of the last city, or when you press
+   **Stop**. **Pause** and **Skip lead** work as in Bulk WhatsApp.
+
+The footer of the setup window shows how many searches the lists add up to.
+Every search uses provider credits, so start with a few cities and business
+types.
+
+Leads already messaged are never messaged again. Finished searches are
+remembered in `turbo-progress.json` in the data folder, so starting turbo mode
+again continues where it stopped; *Forget* in the setup window clears that
+memory. With the default safety settings the run stops and asks every 25
+messages and at 50 messages a day — set *Ask after* and *Daily limit* to 0 to
+let it run unattended, at a higher risk of WhatsApp restricting the number.
+After three failed searches in a row (for example a rejected API key) the run
+stops by itself.
+
 ## 7 · The export file
 
 A search **never writes a file by itself**. Results stay in the grid and in the
@@ -250,7 +283,7 @@ The original interface, still fully supported and dependency-free:
 Without Python, the packaged builds carry the same wizard:
 
 ```bash
-./MAPLEAD-1.3.1-x86_64.AppImage --cli --demo          # Linux: the AppImage is both
+./MAPLEAD-1.4.0-x86_64.AppImage --cli --demo          # Linux: the AppImage is both
 .\MAPLEAD-1.2.0-windows-x64.exe --cli --demo          # Windows: same trick, one .exe
 ```
 

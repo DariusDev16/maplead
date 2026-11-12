@@ -19,6 +19,7 @@ lead-scraper API and writes them to CSV / Excel / JSON / TXT / TSV / HTML.
 | 🏷️ **68 business types · 35 fields** | you choose exactly which columns come out |
 | 💬 **Leads panel + WhatsApp** | cards with one-click links and a first message built from the lead |
 | 📨 **Bulk WhatsApp** | sends the message to a whole filter through WhatsApp Web, with safety pauses and a contact history |
+| ⚡ **Turbo mode** | searches city by city and business by business, and messages every lead that passes your filter |
 | 📄 **6 export formats** | csv · xlsx · json · txt · tsv · html |
 
 <p align="center">
@@ -33,8 +34,8 @@ lead-scraper API and writes them to CSV / Excel / JSON / TXT / TSV / HTML.
 **Linux x86_64, AppImage** — one file, no packages, no root:
 
 ```bash
-chmod +x MAPLEAD-1.3.1-x86_64.AppImage
-./MAPLEAD-1.3.1-x86_64.AppImage
+chmod +x MAPLEAD-1.4.0-x86_64.AppImage
+./MAPLEAD-1.4.0-x86_64.AppImage
 ```
 
 Building it yourself (also fine for arm64/other distros with a rebuild):
@@ -132,6 +133,22 @@ Details and the safety settings: [docs/GUIDE.md › Bulk WhatsApp](docs/GUIDE.md
   <a href="docs/screenshots/bulk-sender.png"><img src="docs/screenshots/bulk-sender.png" width="26%" alt="bulk send: progress and activity log"></a>
 </p>
 
+## 6 · Turbo mode (Linux)
+
+**Turbo mode** (under *Run search*, or `Ctrl+T`) does the search and the bulk
+send by itself, for a whole list of cities and business types:
+
+1. tick the cities and the business types, pick the filter (*No website* by
+   default) and the safety pauses;
+2. it searches the first business type in the first city, sends your saved
+   message to every lead that passes the filter, then moves to the next business
+   type — and, after the last one, to the next city;
+3. it ends when the lists do, or when you press **Stop**. Starting it again
+   continues where it stopped, and nobody is messaged twice.
+
+Every search uses provider credits. Details:
+[docs/GUIDE.md › Turbo mode](docs/GUIDE.md#turbo-mode).
+
 ---
 
 ## Terminal wizard
@@ -183,9 +200,9 @@ On Linux the wizard is inside the AppImage — the same file as the desktop app,
 nothing has to be installed first either:
 
 ```bash
-./MAPLEAD-1.3.1-x86_64.AppImage --cli --demo
-./MAPLEAD-1.3.1-x86_64.AppImage --cli --country DE --city Berlin --business dentist
-./MAPLEAD-1.3.1-x86_64.AppImage --cli --doctor
+./MAPLEAD-1.4.0-x86_64.AppImage --cli --demo
+./MAPLEAD-1.4.0-x86_64.AppImage --cli --country DE --city Berlin --business dentist
+./MAPLEAD-1.4.0-x86_64.AppImage --cli --doctor
 ```
 
 You can add `~/.local/bin/maplead-cli` yourself (`#!/bin/sh` + `exec "$HOME/Apps"/MAPLEAD-*-x86_64.AppImage --cli "$@"`)

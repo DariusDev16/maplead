@@ -20,7 +20,7 @@ from PySide6.QtWidgets import (QCheckBox, QComboBox, QDialog, QDoubleSpinBox,
                                QSpinBox, QSplitter, QToolButton, QVBoxLayout,
                                QWidget)
 
-from .. import contacts, exporters, paths
+from .. import contacts, exporters, paths, turbo
 from ..art import VERSION
 from ..data import cities as CI
 from ..data import countries as CO
@@ -71,6 +71,7 @@ class MainWindow(QMainWindow):
         self._run_spec: Optional[SearchSpec] = None
         self._last_result: Optional[RunResult] = None
         self._panel: Optional[LeadsPanel] = None
+        self._turbo = None
 
         self._build()
         self._restore_state()
@@ -365,6 +366,14 @@ class MainWindow(QMainWindow):
         self.run_btn.setIcon(icons.icon("play", self.p.accent_text, 15))
         self.run_btn.clicked.connect(self.toggle_run)
         lay.addWidget(self.run_btn)
+
+        self.turbo_btn = QPushButton("  Turbo mode")
+        self.turbo_btn.setIcon(icons.icon("bolt", self.p.text_dim, 15))
+        self.turbo_btn.setToolTip(
+            "Search city by city and business by business, and send the saved "
+            "WhatsApp message to every lead that passes your filter (Ctrl+T)")
+        self.turbo_btn.clicked.connect(self.open_turbo)
+        lay.addWidget(self.turbo_btn)
         bar.setMinimumHeight(bar.sizeHint().height())
         return bar
 
@@ -744,9 +753,8 @@ class MainWindow(QMainWindow):
 
     def spec(self) -> SearchSpec:
         country = self.country_combo.value()
-        text = self.business_combo.currentText().strip()
-        hits = VT.resolve(text)
-        vertical = hits[0] if hits else None
+        business_label, terms = turbo.business_terms(
+            self.business_combo.currentText())
         provider = self.provider_combo.value() or "demo"
         fmt = self.format_combo.currentData() or "csv"
         region = self.region_combo.currentText().strip()
@@ -758,8 +766,8 @@ class MainWindow(QMainWindow):
             country=country,
             region=region,
             city=city,
-            business_label=vertical.label if vertical else text,
-            terms=[vertical.query] + list(vertical.synonyms[:2]) if vertical else [text],
+            business_label=business_label,
+            terms=terms,
             fields=list(self._fields),
             limit=self.limit_spin.value(),
             language=(country.lang if country else "en"),
@@ -820,6 +828,49 @@ class MainWindow(QMainWindow):
         self.run_btn.setEnabled(not self._problems() or running)
         self.run_btn.style().unpolish(self.run_btn)
         self.run_btn.style().polish(self.run_btn)
+
+    # -- turbo mode ----------------------------------------------------------
+    def open_turbo(self) -> None:
+        """City by city, business by business: search, filter, message."""
+        if self._turbo is not None and self._turbo.is_running():
+            self._turbo.showNormal()
+            self._turbo.raise_()
+            self._turbo.activateWindow()
+            return
+        spec = self.spec()
+        if spec.country is None:
+            QMessageBox.warning(self, "Turbo mode", "Pick a country first.")
+            return
+        if spec.provider_name == "demo":
+            QMessageBox.warning(
+                self, "Turbo mode",
+                "Turbo mode sends real WhatsApp messages, and the Demo provider "
+                "returns made-up phone numbers that may belong to real people."
+                "\n\nPick a provider with an API key first.")
+            return
+        if not PROVIDERS[spec.provider_name].is_configured():
+            QMessageBox.warning(
+                self, "Turbo mode",
+                f"{PROVIDERS[spec.provider_name].label} has no API key — "
+                "open API keys first.")
+            return
+        from .turbo import open_turbo
+        window = open_turbo(spec, self.p, parent=self)
+        if window is None:
+            return
+        self._turbo = window
+        window.batch_ready.connect(self._on_turbo_batch)
+        window.destroyed.connect(lambda *_: setattr(self, "_turbo", None))
+        self.log.write(f"Turbo mode started — {len(window.steps)} searches queued.",
+                       "ok")
+
+    def _on_turbo_batch(self, spec: SearchSpec, result: RunResult) -> None:
+        """Show each turbo search in the grid, unless a manual search is running."""
+        if self._thread is not None and self._thread.isRunning():
+            return
+        self._run_spec = spec
+        self.log.write(f"Turbo: {spec.business_label} in {spec.city}", "query")
+        self._on_finished(result)
 
     # -- run / stop ----------------------------------------------------------
     def toggle_run(self) -> None:
@@ -1102,6 +1153,10 @@ class MainWindow(QMainWindow):
         self.act_run.setShortcut(QKeySequence("Ctrl+R"))
         self.act_run.triggered.connect(self.toggle_run)
 
+        self.act_turbo = QAction("T&urbo mode…", self)
+        self.act_turbo.setShortcut(QKeySequence("Ctrl+T"))
+        self.act_turbo.triggered.connect(self.open_turbo)
+
         self.act_panel = QAction("&Leads panel", self)
         self.act_panel.setShortcut(QKeySequence("Ctrl+P"))
         self.act_panel.setEnabled(False)
@@ -1120,6 +1175,7 @@ class MainWindow(QMainWindow):
 
         menu = bar.addMenu("&MAPLEAD")
         menu.addAction(self.act_run)
+        menu.addAction(self.act_turbo)
         menu.addAction(self.act_panel)
         menu.addAction(self.act_export)
         menu.addSeparator()
