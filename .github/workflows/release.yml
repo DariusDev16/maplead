@@ -1,7 +1,7 @@
 name: Release
 
 # Bump VERSION in maplead/art.py, tag, push:
-#   git tag v1.3.0 && git push origin v1.3.0
+#   git tag v1.4.0 && git push origin v1.4.0
 #
 # A tag push builds the Linux AppImage only. The Windows job runs when the
 # workflow is started by hand (workflow_dispatch).
@@ -67,20 +67,26 @@ jobs:
           tag_name: ${{ github.event.inputs.tag || github.ref_name }}
           name: ${{ steps.meta.outputs.name }}
           body: |
-            **MAPLEAD 1.3.1 — a social profile no longer counts as a website (Linux)**
+            **MAPLEAD 1.4.0 — turbo mode (Linux)**
 
-            A lead whose website is only a social profile or link-in-bio page is now
-            treated as having no website.
+            Turbo mode searches city by city and business by business, and sends your
+            WhatsApp message to every lead that passes your filter — with no clicks in
+            between.
 
-            **What's fixed**
+            **What's new**
 
-            - **No website** now includes leads that only list a page such as Instagram,
-              Facebook or Linktree, and **Has website** leaves them out. Their cards drop
-              the *Website* chip, and the link button reads *Social*.
-            - **Only leads with a website**, `--require-website` and the *with website*
-              count follow the same rule, so a search with that option can return fewer
-              leads than before.
-            - **Bulk send** no longer crashes the AppImage on newer distros (e.g. Debian 13).
+            - **Turbo mode** (under *Run search*, or `Ctrl+T`): tick the cities and the
+              business types, pick the filter (*No website* by default) and start. It
+              searches the first business type in the first city, messages the matching
+              leads through the bulk sender, moves to the next business type and, after
+              the last one, to the next city — until the lists end or you press **Stop**.
+            - The same safety pauses as **Bulk send**. Leads already messaged are never
+              messaged twice.
+            - Finished searches are remembered, so starting turbo mode again continues
+              where it stopped.
+            - Every search uses provider credits; the setup window shows how many
+              searches your lists add up to. Turbo mode does not run with the Demo
+              provider.
 
             Full notes: https://github.com/${{ github.repository }}/blob/main/CHANGELOG.md ·
             guide: https://github.com/${{ github.repository }}/blob/main/docs/GUIDE.md
@@ -105,7 +111,7 @@ jobs:
 
   windows:
     name: build Windows x64
-    # 1.3.0 ships for Linux only; build Windows by starting the workflow by hand
+    # 1.4.0 ships for Linux only; build Windows by starting the workflow by hand
     if: github.event_name == 'workflow_dispatch'
     runs-on: windows-latest
     steps:

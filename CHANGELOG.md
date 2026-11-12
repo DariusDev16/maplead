@@ -4,6 +4,25 @@ All notable changes to MAPLEAD. Format follows [Keep a Changelog](https://keepac
 
 ## [Unreleased]
 
+## [1.4.0] — 2026-11-12
+
+Linux (AppImage) only — the Windows build and the terminal wizard are unchanged
+in this release.
+
+### Added
+- **Turbo mode** — a new **Turbo mode** button under *Run search* (`Ctrl+T`)
+  walks a list of cities and, in each one, a list of business types: it runs the
+  search, keeps the leads that pass the filter you chose (*No website* by
+  default), sends them your saved WhatsApp message through the bulk sender, then
+  moves to the next business type and, after the last one, to the next city —
+  until the lists end or you press **Stop**.
+  - Tick the cities and business types (or add your own), pick the filter, the
+    leads per search and the same safety pauses as **Bulk send**.
+  - Leads already messaged are never messaged twice, and finished searches are
+    remembered (`~/.local/share/maplead/turbo-progress.json`), so starting turbo
+    mode again continues where it stopped.
+  - Not available with the Demo provider: its phone numbers are made up.
+
 ## [1.3.1] — 2026-11-09
 
 ### Fixed
