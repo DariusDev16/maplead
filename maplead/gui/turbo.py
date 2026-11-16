@@ -29,7 +29,7 @@ from PySide6.QtWidgets import (QCheckBox, QComboBox, QDialog, QFrame,
                                QPushButton, QSpinBox, QSplitter, QVBoxLayout,
                                QWidget)
 
-from .. import outreach, turbo
+from .. import outreach, resume, turbo
 from ..data import cities as CI
 from ..data import fields as FD
 from ..data import verticals as VT
@@ -220,6 +220,26 @@ class TurboSetupDialog(QDialog):
         hl.addWidget(message_btn)
         root.addWidget(header)
 
+        # where the last run stopped ------------------------------------------
+        self.resume_card = QFrame()
+        self.resume_card.setObjectName("resumeCard")
+        rl = QHBoxLayout(self.resume_card)
+        rl.setContentsMargins(16, 10, 16, 10)
+        rl.setSpacing(10)
+        self.resume_label = QLabel("")
+        self.resume_label.setWordWrap(True)
+        rl.addWidget(self.resume_label, 1)
+        self.resume_btn = QPushButton("Continue")
+        self.resume_btn.setProperty("accent", True)
+        self.resume_btn.clicked.connect(self._resume_last)
+        rl.addWidget(self.resume_btn)
+        resume_dismiss = QPushButton("Dismiss")
+        resume_dismiss.setProperty("flat", True)
+        resume_dismiss.setToolTip("Forget where the last turbo run stopped")
+        resume_dismiss.clicked.connect(self._forget_last)
+        rl.addWidget(resume_dismiss)
+        root.addWidget(self.resume_card)
+
         # lists + options ------------------------------------------------------
         split = QSplitter(Qt.Horizontal)
         split.setChildrenCollapsible(False)
@@ -275,20 +295,20 @@ class TurboSetupDialog(QDialog):
         except (TypeError, ValueError):
             self.limit_spin.setValue(base.limit)
         rc.addWidget(self.limit_spin)
-        resume = QHBoxLayout()
-        resume.setSpacing(6)
+        resume_row = QHBoxLayout()
+        resume_row.setSpacing(6)
         self.skip_done = QCheckBox("Skip searches already finished")
         self.skip_done.setToolTip("Continue where the last turbo run stopped instead "
                                   "of running the same searches again")
         self.skip_done.setChecked(bool(saved.get("skip_done", True)))
         self.skip_done.toggled.connect(self._sync_footer)
-        resume.addWidget(self.skip_done, 1)
+        resume_row.addWidget(self.skip_done, 1)
         reset = QPushButton("Forget")
         reset.setProperty("flat", True)
         reset.setToolTip("Forget which searches were already finished")
         reset.clicked.connect(self._reset_progress)
-        resume.addWidget(reset)
-        rc.addLayout(resume)
+        resume_row.addWidget(reset)
+        rc.addLayout(resume_row)
         note = QLabel("Leads already messaged are always skipped.")
         note.setObjectName("hint")
         note.setWordWrap(True)
@@ -333,6 +353,7 @@ class TurboSetupDialog(QDialog):
         self.businesses.changed.connect(self._sync_footer)
         self._sync_preview()
         self._sync_footer()
+        self._sync_resume()
 
     # -- state ------------------------------------------------------------------
     def _all_steps(self) -> List[turbo.Step]:
@@ -364,6 +385,43 @@ class TurboSetupDialog(QDialog):
         self.summary.setText(text)
         self.start_btn.setEnabled(pending > 0)
 
+    # -- where the last run stopped ---------------------------------------------
+    def _sync_resume(self) -> None:
+        last = self.progress.last_run
+        if not last or str(last.get("iso") or "").lower() != self._iso.lower():
+            self.resume_card.setVisible(False)
+            return
+        when = resume.when_text(last.get("at"))
+        total = resume.as_int(last.get("total"))
+        done = resume.as_int(last.get("completed"))
+        left = max(0, total - done)
+        label = str(last.get("label") or "").strip()
+        if str(last.get("status") or "") == "finished" or left == 0:
+            text = f"Last turbo run finished on {when} — every search handled."
+            self.resume_btn.setVisible(False)
+        else:
+            where = f" while at “{label}”" if label else ""
+            reason = str(last.get("reason") or "").strip()
+            why = f" {reason}." if reason else ""
+            text = (f"Last turbo run stopped on {when}{where}.{why} {left} "
+                    "searches were still to run — Continue picks up from there.")
+            self.resume_btn.setVisible(True)
+        self.resume_label.setText(text)
+        self.resume_card.setVisible(True)
+
+    def _resume_last(self) -> None:
+        self.skip_done.setChecked(True)
+        self._sync_footer()
+        self.resume_card.setVisible(False)
+
+    def _forget_last(self) -> None:
+        try:
+            self.progress.forget_last()
+        except OSError as exc:
+            QMessageBox.warning(self, "Turbo mode",
+                                f"Could not save the progress file: {exc}")
+        self.resume_card.setVisible(False)
+
     def _reset_progress(self) -> None:
         if not self.progress.done:
             return
@@ -376,9 +434,11 @@ class TurboSetupDialog(QDialog):
         if answer == QMessageBox.Yes:
             try:
                 self.progress.clear()
+                self.progress.forget_last()
             except OSError as exc:
                 QMessageBox.warning(self, "Turbo mode",
                                     f"Could not save the progress file: {exc}")
+            self.resume_card.setVisible(False)
             self._sync_footer()
 
     def _edit_template(self) -> None:
@@ -438,6 +498,7 @@ class TurboWindow(WhatsAppSenderWindow):
         self.turbo_progress = progress or turbo.Progress()
         self._step_index = -1
         self._step_ok = False            # the current step's search succeeded
+        self._handled_steps = 0          # steps finished in this run
         self._failures = 0               # failed searches in a row
         self._searches = 0
         self._spec: Optional[SearchSpec] = None
@@ -471,6 +532,33 @@ class TurboWindow(WhatsAppSenderWindow):
                 turbo.step_key(iso, self.steps[self._step_index], self.filter_key))
         except OSError as exc:
             self.log.write(f"Could not save the turbo progress: {exc}", "error")
+        self._handled_steps += 1
+
+    # -- resume reminder ----------------------------------------------------------
+    def _completed(self) -> int:
+        """Steps this run finished (old progress marks do not count)."""
+        return self._handled_steps
+
+    def _remember(self, status: str, reason: str = "") -> None:
+        step = (self.steps[self._step_index]
+                if 0 <= self._step_index < len(self.steps) else None)
+        iso = self.base.country.iso if self.base.country else ""
+        completed = self._completed()
+        try:
+            self.turbo_progress.remember(
+                status=status,
+                reason=reason,
+                iso=iso,
+                filter_key=self.filter_key,
+                label=step.label if step else "",
+                city=step.city if step else "",
+                business=step.business if step else "",
+                total=len(self.steps),
+                completed=completed,
+                remaining=max(0, len(self.steps) - completed),
+            )
+        except OSError as exc:
+            self.log.write(f"Could not save the resume reminder: {exc}", "error")
 
     # -- searching ----------------------------------------------------------------
     def _spec_for(self, step: turbo.Step) -> SearchSpec:
@@ -491,6 +579,7 @@ class TurboWindow(WhatsAppSenderWindow):
             self._done("Turbo finished — every city and business type handled")
             return
         step = self.steps[self._step_index]
+        self._remember("running")
         new_city = (self._step_index == 0
                     or self.steps[self._step_index - 1].city != step.city)
         if new_city:
@@ -568,11 +657,13 @@ class TurboWindow(WhatsAppSenderWindow):
         if self._worker is not None:
             self._worker.stop()
             self._worker = None
+        left = max(0, len(self.steps) - self._completed())
+        self._remember("finished" if left == 0 else "stopped", title)
         super()._done(title)
-        left = max(0, len(self.steps) - self._step_index - 1)
         self.log.write(f"{self._searches} searches run"
                        + (f" · {left} not reached — start turbo mode again to "
-                          f"continue from there" if left else ""), "info")
+                          f"continue from there" if left
+                          else " · every search handled"), "info")
 
     def closeEvent(self, event) -> None:  # noqa: N802 (Qt API)
         super().closeEvent(event)

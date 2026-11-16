@@ -35,7 +35,7 @@ from PySide6.QtWidgets import (QApplication, QDialog, QFrame, QGridLayout,
                                QSpinBox, QSplitter, QTableWidget,
                                QTableWidgetItem, QVBoxLayout, QWidget)
 
-from .. import contacts, outreach, paths
+from .. import contacts, outreach, paths, resume
 from . import icons
 from .theme import Palette
 from .widgets import LogPane, card, field_label
@@ -43,6 +43,7 @@ from .widgets import LogPane, card, field_label
 _SETTINGS_ORG = "maplead"
 _SETTINGS_APP = "maplead-desktop"
 _SAFETY_KEY = "whatsapp/bulk_safety"
+_REMINDER_FILE = "whatsapp-last-run.json"
 
 WHATSAPP_WEB = "https://web.whatsapp.com/"
 WHATSAPP_SEND = WHATSAPP_WEB + "send"
@@ -293,7 +294,9 @@ class BulkSendDialog(QDialog):
         self._dial = dial
         self._iso = (country_code or "").lower()
         self._leads = list(leads)
+        self.filter_label = filter_label
         self.history = outreach.History()
+        self.reminder = resume.Reminder(_REMINDER_FILE)
         self.safety = load_safety()
         self.items: List[outreach.OutreachItem] = []
         self.selected: List[outreach.OutreachItem] = []
@@ -327,7 +330,26 @@ class BulkSendDialog(QDialog):
         message_btn.clicked.connect(self._edit_template)
         hl.addWidget(message_btn)
         root.addWidget(header)
-        self._filter_label = filter_label
+
+        # where the last run stopped ------------------------------------------
+        self.resume_card = QFrame()
+        self.resume_card.setObjectName("resumeCard")
+        rl = QHBoxLayout(self.resume_card)
+        rl.setContentsMargins(16, 10, 16, 10)
+        rl.setSpacing(10)
+        self.resume_label = QLabel("")
+        self.resume_label.setWordWrap(True)
+        rl.addWidget(self.resume_label, 1)
+        self.resume_btn = QPushButton("Show unreached")
+        self.resume_btn.setToolTip("Tick every lead that was not messaged yet")
+        self.resume_btn.clicked.connect(self._resume_last)
+        rl.addWidget(self.resume_btn)
+        resume_dismiss = QPushButton("Dismiss")
+        resume_dismiss.setProperty("flat", True)
+        resume_dismiss.setToolTip("Forget where the last bulk send stopped")
+        resume_dismiss.clicked.connect(self._forget_last)
+        rl.addWidget(resume_dismiss)
+        root.addWidget(self.resume_card)
 
         # leads + preview ------------------------------------------------------
         split = QSplitter(Qt.Horizontal)
@@ -441,7 +463,7 @@ class BulkSendDialog(QDialog):
             self.table.setCurrentCell(0, self.COL_NAME)
         skipped = len(self._leads) - len(self.items)
         contacted = sum(1 for i in self.items if i.contacted)
-        parts = [self._filter_label or "current filter",
+        parts = [self.filter_label or "current filter",
                  f"{len(self.items)} with WhatsApp"]
         if contacted:
             parts.append(f"{contacted} already contacted")
@@ -450,6 +472,47 @@ class BulkSendDialog(QDialog):
         self.sub_label.setText(" · ".join(parts))
         self._sync_preview()
         self._sync_footer()
+        self._sync_reminder()
+
+    # -- where the last run stopped ---------------------------------------------
+    def _sync_reminder(self) -> None:
+        last = self.reminder.last
+        total = resume.as_int(last.get("total")) if last else 0
+        handled = resume.as_int(last.get("handled")) if last else 0
+        if not last or total <= 0:
+            self.resume_card.setVisible(False)
+            return
+        when = resume.when_text(last.get("at"))
+        if str(last.get("status") or "") == "finished" or handled >= total:
+            text = (f"Last bulk send finished on {when} — "
+                    f"{handled} of {total} leads handled.")
+            self.resume_btn.setVisible(False)
+        else:
+            left = max(0, total - handled)
+            name = str(last.get("next_name") or "").strip()
+            number = str(last.get("next_number") or "").strip()
+            where = f" Next: {name} (+{number})." if name else ""
+            reason = str(last.get("reason") or "").strip()
+            why = f" — {reason}" if reason else ""
+            text = (f"Last bulk send stopped on {when} after {handled} of "
+                    f"{total} leads{why}.{where} {left} were still to reach — "
+                    "leads already messaged are skipped and the rest are "
+                    "ticked below. Start sending to resume.")
+            self.resume_btn.setVisible(left > 0)
+        self.resume_label.setText(text)
+        self.resume_card.setVisible(True)
+
+    def _resume_last(self) -> None:
+        self._tick("new")
+        self._sync_footer()
+
+    def _forget_last(self) -> None:
+        try:
+            self.reminder.clear()
+        except OSError as exc:
+            QMessageBox.warning(self, "Bulk WhatsApp",
+                                f"Could not save the reminder: {exc}")
+        self.resume_card.setVisible(False)
 
     # -- interaction ------------------------------------------------------------
     def _tick(self, mode: str) -> None:
@@ -534,6 +597,8 @@ class WhatsAppSenderWindow(QDialog):
     def __init__(self, items: Sequence[outreach.OutreachItem],
                  safety: outreach.SafetySettings, palette: Palette, *,
                  history: Optional[outreach.History] = None,
+                 reminder: Optional[resume.Reminder] = None,
+                 filter_label: str = "",
                  parent: Optional[QWidget] = None):
         super().__init__(parent)
         from PySide6.QtWebEngineCore import QWebEnginePage
@@ -546,6 +611,8 @@ class WhatsAppSenderWindow(QDialog):
         self.safety = safety.normalized()
         self.pacer = outreach.Pacer(self.safety)
         self.history = history or outreach.History()
+        self.reminder = reminder
+        self.filter_label = filter_label
 
         self._state = self.IDLE
         self._index = -1                 # item being handled
@@ -665,6 +732,38 @@ class WhatsAppSenderWindow(QDialog):
         self.progress.setRange(0, max(1, len(self.items)))
         self._sync_counts()
 
+    # -- resume reminder ------------------------------------------------------
+    def _pending_index(self) -> Optional[int]:
+        """The lead to send next: the open one, or the one after it."""
+        if 0 <= self._index < len(self.items) and not self.items[self._index].status:
+            return self._index
+        nxt = self._index + 1
+        return nxt if nxt < len(self.items) else None
+
+    def _remember_checkpoint(self, status: str, reason: str = "") -> None:
+        """Save where the run is, so the next bulk send shows the reminder."""
+        if self.reminder is None:
+            return
+        c = outreach.counts(self.items)
+        pending = self._pending_index()
+        item = self.items[pending] if pending is not None else None
+        try:
+            self.reminder.remember(
+                status=status,
+                reason=reason,
+                filter_label=self.filter_label,
+                total=len(self.items),
+                handled=sum(c.values()),
+                sent=c[outreach.SENT],
+                invalid=c[outreach.INVALID],
+                failed=c[outreach.FAILED],
+                skipped=c[outreach.SKIPPED],
+                next_number=item.number if item else "",
+                next_name=item.name if item else "",
+            )
+        except OSError as exc:
+            self.log.write(f"Could not save the resume reminder: {exc}", "error")
+
     # -- lifecycle ------------------------------------------------------------
     def start(self) -> None:
         self._set_state(self.LOGIN, "Opening WhatsApp Web…",
@@ -672,6 +771,7 @@ class WhatsAppSenderWindow(QDialog):
                         "phone (Linked devices). This is needed only once.")
         self.page.load(QUrl(WHATSAPP_WEB))
         self.timer.start()
+        self._remember_checkpoint("running", "opening WhatsApp Web")
 
     def _set_state(self, state: str, title: str = "", detail: str = "") -> None:
         self._state = state
@@ -833,6 +933,7 @@ class WhatsAppSenderWindow(QDialog):
 
         self._index = nxt
         item = self.items[nxt]
+        self._remember_checkpoint("running", "opening the next lead")
         from .lead_panel import load_message_template
         # rendered now, so {saudacao} matches the time it is actually sent
         item.message = contacts.render_template(load_message_template(), item.lead)
@@ -861,6 +962,7 @@ class WhatsAppSenderWindow(QDialog):
                  outreach.SKIPPED: "info"}.get(status, "error")
         self.log.write(f"   {label}" + (f" — {error}" if error else ""), level)
         self._sync_counts()
+        self._remember_checkpoint("running")
 
         if self._next_index() is None and not self._more_coming():
             self._queue_exhausted()
@@ -894,11 +996,20 @@ class WhatsAppSenderWindow(QDialog):
     def _done(self, title: str) -> None:
         self.timer.stop()
         c = outreach.counts(self.items)
-        self._set_state(self.DONE, title,
-                        f"Sent {c[outreach.SENT]} · not on WhatsApp "
-                        f"{c[outreach.INVALID]} · failed {c[outreach.FAILED]}. "
-                        "The history is saved; these numbers are skipped next time.")
+        pending = self._pending_index()
+        detail = (f"Sent {c[outreach.SENT]} · not on WhatsApp "
+                  f"{c[outreach.INVALID]} · failed {c[outreach.FAILED]}. "
+                  "The history is saved; these numbers are skipped next time.")
+        if pending is not None:
+            nxt = self.items[pending]
+            detail += f" Next: {nxt.name} (+{nxt.number})."
+        self._set_state(self.DONE, title, detail)
+        self._remember_checkpoint("finished" if pending is None else "stopped",
+                                  title)
         self.log.write(title, "ok")
+        if pending is not None:
+            nxt = self.items[pending]
+            self.log.write(f"   Resume from {nxt.name} (+{nxt.number})", "info")
         self.pause_btn.setText("Pause")
         self._paused = False
 
@@ -973,7 +1084,10 @@ def open_bulk_sender(leads: Sequence[Dict[str, Any]], palette: Palette, *,
     if dialog.exec() != QDialog.Accepted or not dialog.selected:
         return None
     window = WhatsAppSenderWindow(dialog.selected, dialog.safety, palette,
-                                  history=dialog.history, parent=parent)
+                                  history=dialog.history,
+                                  reminder=dialog.reminder,
+                                  filter_label=dialog.filter_label,
+                                  parent=parent)
     window.setAttribute(Qt.WA_DeleteOnClose, True)
     window.show()
     window.start()
