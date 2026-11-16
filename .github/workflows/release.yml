@@ -1,7 +1,7 @@
 name: Release
 
 # Bump VERSION in maplead/art.py, tag, push:
-#   git tag v1.4.1 && git push origin v1.4.1
+#   git tag v1.4.2 && git push origin v1.4.2
 #
 # A tag push builds the Linux AppImage only. The Windows job runs when the
 # workflow is started by hand (workflow_dispatch).
@@ -67,16 +67,19 @@ jobs:
           tag_name: ${{ github.event.inputs.tag || github.ref_name }}
           name: ${{ steps.meta.outputs.name }}
           body: |
-            **MAPLEAD 1.4.1 — sending no longer stops at the "not on WhatsApp" popup (Linux)**
+            **MAPLEAD 1.4.2 — pick up a stopped run where it left off (Linux)**
 
-            **What's fixed**
+            **What's new**
 
-            - **Bulk send** and **Turbo mode** no longer wait for you to click the popup
-              WhatsApp shows for a number that has no account. The lead is marked
-              *Not on WhatsApp*, the popup is closed and the run goes on to the next lead.
-            - More wordings of that popup are recognised, and any other popup that keeps
-              the chat from opening is handled the same way after a few seconds; its text
-              is written to the activity log.
+            - **Resume reminder** for **Turbo mode** and **Bulk send**. When a run stops,
+              the next setup window shows where it stopped: the city and business type
+              being searched (and how many searches are left) or the last lead handled
+              and who comes next.
+            - **Continue** / **Show unreached** picks the run up from there; **Dismiss**
+              forgets the reminder. The checkpoint is saved as the run goes, so it also
+              survives closing the app.
+
+            Fixed in 1.4.1: sending no longer stops at the "not on WhatsApp" popup.
 
             New in 1.4.0: **Turbo mode** searches city by city and business by business,
             and messages every lead that passes your filter.

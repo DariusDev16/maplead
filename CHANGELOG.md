@@ -4,6 +4,8 @@ All notable changes to MAPLEAD. Format follows [Keep a Changelog](https://keepac
 
 ## [Unreleased]
 
+## [1.4.2] — 2026-11-16
+
 ### Added
 - **Resume reminder** for **Turbo mode** and **Bulk send**. When a run stops,
   the next setup window shows where it stopped: the city and business type being
