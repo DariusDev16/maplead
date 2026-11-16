@@ -4,6 +4,14 @@ All notable changes to MAPLEAD. Format follows [Keep a Changelog](https://keepac
 
 ## [Unreleased]
 
+### Added
+- **Resume reminder** for **Turbo mode** and **Bulk send**. When a run stops,
+  the next setup window shows where it stopped: the city and business type being
+  searched (and how many searches are left) or the last lead handled and who
+  comes next. **Continue** / **Show unreached** picks the run up from there;
+  **Dismiss** forgets the reminder. The checkpoint is saved as the run goes, so
+  it also survives closing the app.
+
 ## [1.4.1] — 2026-11-12
 
 ### Fixed

@@ -329,6 +329,11 @@ def component_qss(p: Palette) -> str:
         border: 1px solid {p.border};
         border-radius: 12px;
     }}
+    QFrame#resumeCard {{
+        background: {p.surface};
+        border: 1px solid {p.warning};
+        border-radius: 12px;
+    }}
     QLabel#panelTitle {{ font-size: 18px; font-weight: 700; color: {p.text}; }}
     QLabel#panelSub {{ color: {p.text_dim}; font-size: 12px; }}
     QFrame#leadCard {{

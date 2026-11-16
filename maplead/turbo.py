@@ -20,10 +20,11 @@ import tempfile
 from dataclasses import dataclass
 from typing import Any, Dict, Iterable, List, Mapping, Optional, Sequence, Tuple
 
-from . import contacts, paths
+from . import contacts, paths, resume
 from .data import verticals as VT
 
 PROGRESS_FILE = "turbo-progress.json"
+REMINDER_FILE = "turbo-last-run.json"
 
 # lead filters the turbo run can apply (key, label) — the keys match the leads
 # panel's filters, so "No website" means the same thing in both places
@@ -112,9 +113,12 @@ class Progress:
     instead of paying for the same searches twice.
     """
 
-    def __init__(self, path: Optional[str] = None):
+    def __init__(self, path: Optional[str] = None,
+                 reminder_path: Optional[str] = None):
         self.path = path or paths.state_file(PROGRESS_FILE)
         self.done: Dict[str, str] = {}
+        # where the last run stopped; shown by the setup dialog next time
+        self.reminder = resume.Reminder(REMINDER_FILE, reminder_path)
         self.load()
 
     def load(self) -> None:
@@ -157,3 +161,14 @@ class Progress:
 
     def pending(self, iso: str, steps: Sequence[Step], filter_key: str) -> List[Step]:
         return [s for s in steps if not self.is_done(step_key(iso, s, filter_key))]
+
+    # -- where the last run stopped ----------------------------------------
+    @property
+    def last_run(self) -> Dict[str, Any]:
+        return self.reminder.last
+
+    def remember(self, **fields: Any) -> None:
+        self.reminder.remember(**fields)
+
+    def forget_last(self) -> None:
+        self.reminder.clear()

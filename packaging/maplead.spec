@@ -47,6 +47,7 @@ a = Analysis(                                          # noqa: F821
         "maplead.gui.theme",
         "maplead.contacts",
         "maplead.outreach",
+        "maplead.resume",
         "maplead.gui.bulk_sender",
         "maplead.turbo",
         "maplead.gui.turbo",
